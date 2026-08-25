@@ -4,8 +4,11 @@
  *
  * 判断はすべて session ストア（＝ core のユースケース）に委ねてあり、
  * ここは配置と見せ方だけを受け持つ。
+ *
+ * レイアウトは画面の高さに固定し、スクロールは各ペインの中だけで起こす。
+ * コンソールの出力が増えても画面ごと下に伸びないようにするため。
  */
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { BranchName, CommitId, StageSpec } from '@reflog/core';
 import { useSessionStore } from '@/stores/session';
 import { commitLabel } from '@/presentation/labels';
@@ -28,7 +31,10 @@ const store = useSessionStore();
 const mergePickerOpen = ref(false);
 
 onMounted(() => store.start(props.spec));
-watch(() => props.spec.id, () => store.start(props.spec));
+watch(
+  () => props.spec.id,
+  () => store.start(props.spec),
+);
 
 watch(
   () => store.cleared,
@@ -37,13 +43,106 @@ watch(
   },
 );
 
+// --- カラム幅の調整 --------------------------------------------------------
+
+const WIDTH_KEY = 'reflog:column-widths';
+const LEFT_RANGE = { min: 200, max: 640 } as const;
+const RIGHT_RANGE = { min: 200, max: 520 } as const;
+const DEFAULTS = { left: 230, right: 260 } as const;
+
+const clamp = (value: number, range: { min: number; max: number }): number =>
+  Math.min(range.max, Math.max(range.min, value));
+
+const readWidths = (): { left: number; right: number } => {
+  try {
+    const raw = localStorage.getItem(WIDTH_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { left?: number; right?: number };
+      return {
+        left: clamp(parsed.left ?? DEFAULTS.left, LEFT_RANGE),
+        right: clamp(parsed.right ?? DEFAULTS.right, RIGHT_RANGE),
+      };
+    }
+  } catch {
+    // 保存が壊れていても既定値で続行する
+  }
+  return { ...DEFAULTS };
+};
+
+const stored = readWidths();
+const leftWidth = ref(stored.left);
+const rightWidth = ref(stored.right);
+const dragging = ref<'left' | 'right' | null>(null);
+
+const saveWidths = (): void => {
+  try {
+    localStorage.setItem(
+      WIDTH_KEY,
+      JSON.stringify({ left: leftWidth.value, right: rightWidth.value }),
+    );
+  } catch {
+    // 保存できなくても操作そのものは有効
+  }
+};
+
+const onPointerMove = (event: PointerEvent): void => {
+  if (dragging.value === 'left') {
+    leftWidth.value = clamp(event.clientX, LEFT_RANGE);
+  } else if (dragging.value === 'right') {
+    rightWidth.value = clamp(window.innerWidth - event.clientX, RIGHT_RANGE);
+  }
+};
+
+const endDrag = (): void => {
+  if (!dragging.value) return;
+  dragging.value = null;
+  document.body.style.removeProperty('cursor');
+  document.body.style.removeProperty('user-select');
+  saveWidths();
+};
+
+const startDrag = (side: 'left' | 'right'): void => {
+  dragging.value = side;
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+};
+
+/** キーボードでも幅を変えられるようにする。 */
+const nudge = (side: 'left' | 'right', delta: number): void => {
+  if (side === 'left') leftWidth.value = clamp(leftWidth.value + delta, LEFT_RANGE);
+  else rightWidth.value = clamp(rightWidth.value + delta, RIGHT_RANGE);
+  saveWidths();
+};
+
+const resetWidths = (): void => {
+  leftWidth.value = DEFAULTS.left;
+  rightWidth.value = DEFAULTS.right;
+  saveWidths();
+};
+
+onMounted(() => {
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+});
+onUnmounted(() => {
+  window.removeEventListener('pointermove', onPointerMove);
+  window.removeEventListener('pointerup', endDrag);
+  window.removeEventListener('pointercancel', endDrag);
+  endDrag();
+});
+
+// --- 表示用の値 ------------------------------------------------------------
+
 /**
  * 異常として赤で示す時点。
  * 「消してはいけない記録」を守れという達成条件が、そのまま異常の在り処を指している。
  */
 const anomalyIds = computed<readonly CommitId[]>(() =>
   props.spec.goals
-    .map((goal) => (goal.predicate.type === 'historyPreserved' ? goal.predicate.commitId : null))
+    .map((goal) =>
+      goal.predicate.type === 'historyPreserved' ? goal.predicate.commitId : null,
+    )
     .filter((id): id is CommitId => id !== null),
 );
 
@@ -93,15 +192,23 @@ const onBranch = (): void => {
 </script>
 
 <template>
-  <div v-if="store.session && store.timeline && store.report" class="app">
+  <div
+    v-if="store.session && store.timeline && store.report"
+    class="app"
+    :class="{ 'is-dragging': dragging !== null }"
+    :style="{ '--left-width': `${leftWidth}px`, '--right-width': `${rightWidth}px` }"
+  >
     <header class="bar">
       <div class="identity">
         <span class="chapter">
-          {{ spec.chapter.number > 0 ? `CH ${String(spec.chapter.number).padStart(2, '0')}` : 'MISSION' }}
+          {{
+            spec.chapter.number > 0
+              ? `CH ${String(spec.chapter.number).padStart(2, '0')}`
+              : 'MISSION'
+          }}
           — {{ spec.chapter.title }}
         </span>
         <h1 class="head jp title">{{ spec.title }}</h1>
-        <span class="label">STAGE {{ spec.id.toUpperCase() }}</span>
       </div>
 
       <div class="meters">
@@ -113,6 +220,7 @@ const onBranch = (): void => {
           <span class="label">因果負荷</span>
           <span class="value" :class="{ tight: loadTight }">{{ loadText }}</span>
         </div>
+
         <div class="mode-switch" role="group" aria-label="操作方法">
           <button
             type="button"
@@ -131,34 +239,48 @@ const onBranch = (): void => {
             コンソール
           </button>
         </div>
+
         <button class="btn" type="button" @click="store.restart()">やり直す</button>
         <button class="btn" type="button" @click="emit('exit')">戻る</button>
       </div>
     </header>
 
-    <div class="grid" :class="{ 'is-console': store.inputMode === 'console' }">
-      <CommandConsole
-        v-if="store.inputMode === 'console'"
-        :lines="store.consoleLines"
-        :history="store.commandHistory"
-        @run="store.runCommand($event)"
-      />
+    <div class="grid">
+      <div class="col col-left">
+        <CommandConsole
+          v-if="store.inputMode === 'console'"
+          :lines="store.consoleLines"
+          :history="store.commandHistory"
+          @run="store.runCommand($event)"
+        />
+        <AbilityPanel
+          v-else
+          :abilities="spec.abilities"
+          :state="store.timeline"
+          :selected="store.selected"
+          :branches="store.branches"
+          :mergeable="store.mergeableBranches"
+          :can-undo="store.canUndo"
+          :has-hints="(spec.hints?.length ?? 0) > 0"
+          @revert="store.revertSelected()"
+          @merge="onMerge"
+          @branch="onBranch"
+          @checkout="store.checkout($event)"
+          @undo="store.undo()"
+          @hint="store.revealHint()"
+        />
+      </div>
 
-      <AbilityPanel
-        v-else
-        :abilities="spec.abilities"
-        :state="store.timeline"
-        :selected="store.selected"
-        :branches="store.branches"
-        :mergeable="store.mergeableBranches"
-        :can-undo="store.canUndo"
-        :has-hints="(spec.hints?.length ?? 0) > 0"
-        @revert="store.revertSelected()"
-        @merge="onMerge"
-        @branch="onBranch"
-        @checkout="store.checkout($event)"
-        @undo="store.undo()"
-        @hint="store.revealHint()"
+      <div
+        class="handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="左の幅を変える"
+        tabindex="0"
+        @pointerdown.prevent="startDrag('left')"
+        @dblclick="resetWidths"
+        @keydown.left.prevent="nudge('left', -24)"
+        @keydown.right.prevent="nudge('left', 24)"
       />
 
       <section class="viewport">
@@ -174,7 +296,19 @@ const onBranch = (): void => {
         </div>
       </section>
 
-      <aside class="pane">
+      <div
+        class="handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="右の幅を変える"
+        tabindex="0"
+        @pointerdown.prevent="startDrag('right')"
+        @dblclick="resetWidths"
+        @keydown.left.prevent="nudge('right', 24)"
+        @keydown.right.prevent="nudge('right', -24)"
+      />
+
+      <aside class="col col-right">
         <div class="stack">
           <span class="label">達成すべき世界の状態</span>
           <GoalList :report="store.report" />
@@ -245,9 +379,7 @@ const onBranch = (): void => {
     <div class="jp prose">
       <p v-for="(line, i) in spec.outro ?? []" :key="i">{{ line }}</p>
     </div>
-    <div class="summary">
-      手数 {{ moveText }}　　因果負荷 {{ loadText }}
-    </div>
+    <div class="summary">手数 {{ moveText }}　　因果負荷 {{ loadText }}</div>
     <div class="actions">
       <button class="btn" type="button" @click="store.restart()">もう一度</button>
       <button class="btn primary" type="button" @click="emit('next')">次へ</button>
@@ -255,21 +387,40 @@ const onBranch = (): void => {
   </ModalShell>
 
   <!-- 通知 -->
-  <div v-if="store.notice" class="toast" :class="{ 'is-error': store.notice.tone === 'error' }">
+  <div
+    v-if="store.notice"
+    class="toast"
+    :class="{ 'is-error': store.notice.tone === 'error' }"
+    role="status"
+  >
     {{ store.notice.text }}
-    <button class="toast-close" type="button" aria-label="閉じる" @click="store.dismissNotice()">
+    <button
+      class="toast-close"
+      type="button"
+      aria-label="閉じる"
+      @click="store.dismissNotice()"
+    >
       ×
     </button>
   </div>
 </template>
 
 <style scoped>
+/*
+ * 画面の高さに固定し、スクロールは各ペインの中だけで起こす。
+ * dvh を使うのは、モバイルでアドレスバーの出入りにより高さが変わるため。
+ */
 .app {
-  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--rule);
   gap: var(--gap);
+  overflow: hidden;
+}
+
+.app.is-dragging {
+  cursor: col-resize;
 }
 
 .bar {
@@ -277,9 +428,10 @@ const onBranch = (): void => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   padding: 10px 16px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .identity {
@@ -287,6 +439,7 @@ const onBranch = (): void => {
   align-items: baseline;
   gap: 12px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .chapter {
@@ -300,12 +453,12 @@ const onBranch = (): void => {
 }
 
 .title {
-  font-size: clamp(18px, 2.4vw, 32px);
+  font-size: clamp(16px, 2.2vw, 30px);
 }
 
 .meters {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -326,18 +479,6 @@ const onBranch = (): void => {
   color: var(--accent);
 }
 
-.grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 230px minmax(0, 1fr) 260px;
-  gap: var(--gap);
-  min-height: 0;
-}
-
-.grid.is-console {
-  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr) 260px;
-}
-
 .mode-switch {
   display: flex;
   border: 1px solid var(--rule-firm);
@@ -355,6 +496,7 @@ const onBranch = (): void => {
   border: none;
   border-radius: 0;
   cursor: pointer;
+  white-space: nowrap;
 }
 .mode-switch button + button {
   border-left: 1px solid var(--rule-firm);
@@ -368,22 +510,49 @@ const onBranch = (): void => {
   outline-offset: -2px;
 }
 
-@media (max-width: 900px) {
-  .grid,
-  .grid.is-console {
-    grid-template-columns: 1fr;
-  }
-  .viewport {
-    min-height: 320px;
-  }
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns:
+    var(--left-width)
+    var(--gap)
+    minmax(0, 1fr)
+    var(--gap)
+    var(--right-width);
+  gap: var(--gap);
+  min-height: 0;
 }
 
-.pane {
-  background: var(--panel);
-  padding: 14px;
+/* 幅を変えるつまみ。1px の罫線の上に、掴める余白を重ねてある。 */
+.handle {
+  position: relative;
+  background: var(--rule);
+  cursor: col-resize;
+  touch-action: none;
+}
+.handle::after {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+  z-index: 5;
+}
+.handle:hover,
+.handle:focus-visible {
+  background: var(--accent);
+  outline: none;
+}
+
+.col {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.col-right {
+  background: var(--panel);
+  padding: 14px;
   gap: 14px;
   overflow-y: auto;
 }
@@ -398,19 +567,80 @@ const onBranch = (): void => {
   background: var(--panel-sub);
   position: relative;
   overflow: auto;
+  min-width: 0;
+  min-height: 0;
 }
 
 .legend {
-  position: absolute;
-  left: 14px;
-  bottom: 12px;
+  position: sticky;
+  bottom: 0;
+  left: 0;
   display: flex;
   gap: 14px;
   pointer-events: none;
+  padding: 8px 14px;
+  background: linear-gradient(to top, var(--panel-sub), transparent);
 }
 .legend .accent {
   color: var(--accent);
 }
+
+/* --- 画面が狭いとき ------------------------------------------------------ */
+
+@media (max-width: 1000px) {
+  .app {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* 縦積みでは、まず盤面を見せる */
+  .viewport {
+    order: 1;
+    min-height: 300px;
+    max-height: 46dvh;
+  }
+  .col-left {
+    order: 2;
+    height: 52dvh;
+  }
+  .col-right {
+    order: 3;
+  }
+
+  .handle {
+    display: none;
+  }
+
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+}
+
+@media (max-width: 620px) {
+  .identity {
+    width: 100%;
+  }
+  .meters {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .title {
+    font-size: 18px;
+  }
+  .col-left {
+    height: 58dvh;
+  }
+}
+
+/* --- ダイアログ内の要素 --------------------------------------------------- */
 
 .prose p {
   margin: 0 0 10px;

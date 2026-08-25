@@ -17,6 +17,11 @@ export interface GraphNode {
   /** どのブランチからも辿れない＝消えた世界線。 */
   readonly isOrphan: boolean;
   readonly refs: readonly BranchName[];
+  /**
+   * ラベルを置く段。同じレーンで隣り合うノード同士を互い違いにして、
+   * 長いメッセージが横に繋がって読めなくなるのを防ぐ。
+   */
+  readonly labelRow: 0 | 1;
 }
 
 export interface GraphEdge {
@@ -98,7 +103,7 @@ export const layoutTimeline = (
 ): GraphLayout => {
   const originX = options.originX ?? 74;
   const originY = options.originY ?? 62;
-  const stepX = options.stepX ?? 132;
+  const stepX = options.stepX ?? 148;
   const stepY = options.stepY ?? 108;
   const radius = options.radius ?? 11;
 
@@ -109,11 +114,17 @@ export const layoutTimeline = (
   const headId = head.ok ? head.value : null;
 
   const positions: Record<CommitId, { x: number; y: number }> = {};
+  const laneSeen: Record<number, number> = {};
+
   const nodes: GraphNode[] = commits.map((commit, index) => {
     const lane = lanes[commit.id] ?? 0;
     const x = originX + index * stepX;
     const y = originY + lane * stepY;
     positions[commit.id] = { x, y };
+
+    const seen = (laneSeen[lane] ?? -1) + 1;
+    laneSeen[lane] = seen;
+
     return {
       id: commit.id,
       commit,
@@ -123,6 +134,7 @@ export const layoutTimeline = (
       isHead: commit.id === headId,
       isOrphan: !reachable.has(commit.id),
       refs: branchesAt(state, commit.id),
+      labelRow: (seen % 2) as 0 | 1,
     };
   });
 

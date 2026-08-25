@@ -124,8 +124,9 @@ defineExpose({ focus });
   background: var(--panel-sub);
   display: flex;
   flex-direction: column;
+  /* 親カラムの高さに収まり、伸びるのは中の .scroll だけにする */
+  flex: 1;
   min-height: 0;
-  height: 100%;
   font-family: var(--mono);
   font-size: 12px;
   line-height: 1.65;

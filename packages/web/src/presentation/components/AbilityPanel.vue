@@ -126,6 +126,8 @@ const guidance = computed(() => {
   background: var(--panel);
   padding: 14px;
   min-width: 0;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;

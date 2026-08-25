@@ -67,11 +67,12 @@ const refBoxWidth = (name: string): number => name.length * 6.6 + 16;
         class="node-msg"
         :class="{ 'is-anomaly': isAnomaly(node.id) }"
         :x="node.x"
-        :y="node.y + 32"
+        :y="node.y + (node.labelRow === 0 ? 31 : 49)"
         text-anchor="middle"
       >
-        {{ truncate(node.commit.message) }}
+        {{ truncate(node.commit.message, 9) }}
       </text>
+      <title>{{ node.commit.message }}</title>
     </g>
 
     <g v-for="node in layout.nodes" :key="`refs-${node.id}`">
@@ -153,10 +154,25 @@ const refBoxWidth = (name: string): number => name.length * 6.6 + 16;
   letter-spacing: 0.02em;
 }
 
+/*
+ * 隣のラベルと重なっても読めるように、地の色で縁を取る。
+ * paint-order を stroke 先にしないと文字が潰れる。
+ */
 .node-msg {
   font-family: var(--jp);
   font-size: 11px;
   fill: var(--ink-muted);
+  paint-order: stroke fill;
+  stroke: var(--panel-sub);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.node-id {
+  paint-order: stroke fill;
+  stroke: var(--panel-sub);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .node-msg.is-anomaly {
   fill: var(--accent);
