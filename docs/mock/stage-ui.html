@@ -1,0 +1,1211 @@
+<title>REFLOG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+
+<style>
+:root {
+  --ground:    #B3B3AF;
+  --panel:     #F2F2F1;
+  --panel-hi:  #FFFFFF;
+  --panel-sub: #E0E0DA;
+  --ink:       #282828;
+  --ink-muted: rgba(40, 40, 40, 0.64);
+  --ink-faint: rgba(40, 40, 40, 0.34);
+  --rule:      rgba(40, 40, 40, 0.20);
+  --rule-firm: rgba(40, 40, 40, 0.45);
+  --accent:    #FA3600;
+  --accent-wash: rgba(250, 54, 0, 0.08);
+  --ok:        #2F6B4F;
+
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --sans: 'Archivo', 'Noto Sans JP', system-ui, sans-serif;
+  --jp:   'Noto Sans JP', 'Archivo', system-ui, sans-serif;
+
+  --gap: 1px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:    #171716;
+    --panel:     #232322;
+    --panel-hi:  #2B2B29;
+    --panel-sub: #1D1D1C;
+    --ink:       #E6E6E0;
+    --ink-muted: rgba(230, 230, 224, 0.62);
+    --ink-faint: rgba(230, 230, 224, 0.32);
+    --rule:      rgba(230, 230, 224, 0.18);
+    --rule-firm: rgba(230, 230, 224, 0.40);
+    --accent:    #FF4E1F;
+    --accent-wash: rgba(255, 78, 31, 0.12);
+    --ok:        #6FBF95;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:    #171716;
+  --panel:     #232322;
+  --panel-hi:  #2B2B29;
+  --panel-sub: #1D1D1C;
+  --ink:       #E6E6E0;
+  --ink-muted: rgba(230, 230, 224, 0.62);
+  --ink-faint: rgba(230, 230, 224, 0.32);
+  --rule:      rgba(230, 230, 224, 0.18);
+  --rule-firm: rgba(230, 230, 224, 0.40);
+  --accent:    #FF4E1F;
+  --accent-wash: rgba(255, 78, 31, 0.12);
+  --ok:        #6FBF95;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--jp);
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- 共通の型 ---------------------------------------------------------- */
+
+.label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.head {
+  font-family: var(--sans);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 0;
+}
+
+h1.head { font-size: clamp(20px, 2.6vw, 34px); }
+h2.head { font-size: clamp(14px, 1.3vw, 17px); }
+
+.jp { font-family: var(--jp); text-transform: none; letter-spacing: 0; }
+
+/* --- レイアウト -------------------------------------------------------- */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--rule);
+  gap: var(--gap);
+}
+
+.bar {
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  flex-wrap: wrap;
+}
+
+.bar-id { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+.chapter-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--rule-firm);
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+.meters { display: flex; gap: 20px; align-items: center; }
+
+.meter { display: flex; align-items: baseline; gap: 7px; }
+.meter-value {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.meter-value.warn { color: var(--accent); }
+
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) 260px;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.pane {
+  background: var(--panel);
+  padding: 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.viewport {
+  background: var(--panel-sub);
+  padding: 0;
+  position: relative;
+  overflow: auto;
+}
+
+.record {
+  background: var(--panel);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 300px);
+  gap: 24px;
+  min-height: 132px;
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .viewport { min-height: 320px; }
+  .record { grid-template-columns: 1fr; }
+}
+
+/* --- 能力パネル -------------------------------------------------------- */
+
+.stack { display: flex; flex-direction: column; gap: 7px; }
+
+.ability {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-align: left;
+  background: var(--panel-hi);
+  color: var(--ink);
+  border: 1px solid var(--rule-firm);
+  border-radius: 0;
+  padding: 9px 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  transition: background 120ms linear, color 120ms linear;
+}
+
+.ability:hover:not(:disabled) { background: var(--ink); color: var(--panel); }
+.ability:disabled { opacity: 0.34; cursor: not-allowed; }
+.ability:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.ability .cost {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.ability.destructive { border-color: var(--accent); color: var(--accent); }
+.ability.destructive:hover:not(:disabled) { background: var(--accent); color: #fff; }
+
+.ability-note {
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.branch-list { display: flex; flex-direction: column; gap: 4px; }
+
+.branch-item {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  background: var(--panel-hi);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.branch-item:hover { border-color: var(--rule-firm); }
+.branch-item[aria-current="true"] { border-color: var(--ink); font-weight: 700; }
+.branch-item .tip { color: var(--ink-faint); }
+
+/* --- 達成条件 ---------------------------------------------------------- */
+
+.goal {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.goal:first-of-type { border-top: none; }
+
+.tick {
+  width: 14px; height: 14px;
+  border: 1px solid var(--rule-firm);
+  border-radius: 50%;
+  margin-top: 3px;
+  position: relative;
+}
+.goal[data-done="true"] .tick { background: var(--ok); border-color: var(--ok); }
+.goal[data-done="true"] .goal-text { color: var(--ink); }
+.goal-text { color: var(--ink-muted); }
+.goal[data-optional="true"] .goal-text::after {
+  content: ' [任意]';
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-faint);
+}
+
+/* --- 世界線図 ---------------------------------------------------------- */
+
+svg { display: block; }
+
+.node-hit { cursor: pointer; }
+.node-ring { fill: var(--panel-hi); stroke: var(--rule-firm); stroke-width: 1; }
+.node-ring.is-anomaly { stroke: var(--accent); }
+.node-ring.is-selected { stroke: var(--ink); stroke-width: 2.5; }
+.node-ring.is-head { fill: var(--ink); }
+.node-hit:hover .node-ring { stroke: var(--ink); }
+
+.edge { stroke: var(--rule-firm); stroke-width: 1; fill: none; }
+.edge.second-parent { stroke-dasharray: 3 3; }
+
+.node-id {
+  font-family: var(--mono);
+  font-size: 9px;
+  fill: var(--ink-faint);
+  letter-spacing: 0.02em;
+}
+.node-msg {
+  font-family: var(--jp);
+  font-size: 11px;
+  fill: var(--ink-muted);
+}
+.node-msg.is-anomaly { fill: var(--accent); }
+
+.ref-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  fill: var(--ink);
+}
+.ref-box { fill: none; stroke: var(--ink); stroke-width: 1; }
+.ref-box.is-head { fill: var(--ink); }
+.ref-tag.is-head { fill: var(--panel); }
+
+.viewport-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  display: flex;
+  gap: 14px;
+  pointer-events: none;
+}
+
+/* --- 観測記録 ---------------------------------------------------------- */
+
+.record-body { min-width: 0; }
+.record-narrative {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.75;
+  max-width: 62ch;
+  color: var(--ink);
+}
+.record-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.03em;
+}
+
+.diff { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.diff-row {
+  font-family: var(--mono);
+  font-size: 11px;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 6px;
+  padding: 2px 5px;
+  background: var(--panel-hi);
+  overflow-x: auto;
+}
+.diff-row .sign { color: var(--ink-faint); }
+.diff-row.add .sign { color: var(--ok); }
+.diff-row.del .sign { color: var(--accent); }
+.diff-row.del .val { text-decoration: line-through; opacity: 0.6; }
+
+/* --- モーダル ---------------------------------------------------------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 19, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 20;
+}
+.scrim[hidden] { display: none; }
+
+.dialog {
+  background: var(--panel);
+  border: 1px solid var(--rule-firm);
+  max-width: 620px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialog.is-alert { border-color: var(--accent); border-width: 2px; }
+
+.conflict-block {
+  border: 1px solid var(--rule);
+  background: var(--panel-hi);
+}
+
+.conflict-marker {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 5px 9px;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--rule);
+  letter-spacing: 0.03em;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.choice {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  padding: 12px 14px;
+  cursor: pointer;
+  color: var(--ink);
+  font-family: var(--jp);
+  font-size: 13px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background 120ms linear;
+}
+.choice:last-of-type { border-bottom: none; }
+.choice:hover { background: var(--accent-wash); }
+.choice:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.choice .side {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+.choice .val { font-family: var(--mono); font-size: 11px; color: var(--ink-muted); }
+
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.btn {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 8px 14px;
+  border: 1px solid var(--rule-firm);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 0;
+}
+.btn:hover { background: var(--ink); color: var(--panel); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.intro-line { margin: 0; line-height: 1.8; }
+.intro-line + .intro-line { margin-top: 10px; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--panel);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  padding: 9px 16px;
+  z-index: 30;
+  max-width: calc(100vw - 32px);
+}
+.toast[hidden] { display: none; }
+.toast.is-error { background: var(--accent); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="bar-id">
+      <span class="chapter-tag">CH 01 — 世界線という概念</span>
+      <h1 class="head jp" id="stage-title">白鷺研究所の火災</h1>
+      <span class="label">STAGE CH1-01</span>
+    </div>
+    <div class="meters">
+      <div class="meter">
+        <span class="label">手数</span>
+        <span class="meter-value" id="m-moves">0/4</span>
+      </div>
+      <div class="meter">
+        <span class="label">因果負荷</span>
+        <span class="meter-value" id="m-load">0/6</span>
+      </div>
+      <button class="btn" id="btn-reset" type="button">やり直す</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="pane">
+      <div class="stack">
+        <span class="label">行使できる能力</span>
+        <button class="ability" id="a-revert" type="button">
+          REVERT<span class="cost">負荷 2</span>
+        </button>
+        <button class="ability" id="a-merge" type="button">
+          MERGE<span class="cost">負荷 2</span>
+        </button>
+        <button class="ability destructive" id="a-reset" type="button" disabled>
+          RESET<span class="cost">未解放</span>
+        </button>
+      </div>
+      <p class="ability-note" id="ability-hint">
+        時点を選ぶと、その出来事を打ち消せる。
+      </p>
+
+      <div class="stack">
+        <span class="label">世界線</span>
+        <div class="branch-list" id="branches"></div>
+      </div>
+
+      <div class="stack">
+        <span class="label">記録</span>
+        <button class="btn" id="btn-undo" type="button">一手戻す</button>
+        <button class="btn" id="btn-hint" type="button">助言を求める</button>
+      </div>
+    </aside>
+
+    <section class="viewport" id="viewport">
+      <svg id="graph" role="img" aria-label="世界線図"></svg>
+      <div class="viewport-legend">
+        <span class="label">● 現在地</span>
+        <span class="label" style="color: var(--accent)">◎ 異常</span>
+      </div>
+    </section>
+
+    <aside class="pane">
+      <div class="stack">
+        <span class="label">達成すべき世界の状態</span>
+        <div id="goals"></div>
+      </div>
+      <div class="stack">
+        <span class="label">現在の世界</span>
+        <div class="diff" id="world"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="record">
+    <div class="record-body">
+      <span class="label" id="record-label">観測記録</span>
+      <p class="record-narrative jp" id="record-text">
+        時点を選択すると、そこで何が起きたかを読める。
+      </p>
+    </div>
+    <div class="record-body">
+      <span class="label">この時点の変化</span>
+      <div class="diff" id="record-diff"></div>
+    </div>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="dialog" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // =========================================================================
+  // ステージ定義（content/stages/ch1-01.json と同じ内容）
+  // =========================================================================
+  const STAGE = {
+    id: 'ch1-01',
+    title: '白鷺研究所の火災',
+    intro: [
+      '1998年11月4日、白鷺研究所。',
+      '観測記録によれば、この世界線では研究員・霧島湊が火災で死亡し、開発中だった時間観測装置は封印された。',
+      'だが本来の歴史では、湊は生存し、装置は完成しているはずだった。',
+      '——観測班が別の世界線の記録を回収している。そちらでは、装置は完成していた。'
+    ],
+    outro: [
+      '火災は「起きなかったこと」にはならない。記録には残る。打ち消した、という事実ごと残る。',
+      'それでいい、と主任は言った。消してしまえば、誰も彼を悼めなくなる。'
+    ],
+    initialFacts: {
+      'kirishima.alive': 'true',
+      'lab.device': 'prototype',
+      'lab.status': 'operating'
+    },
+    rootMessage: '観測開始: 1998年11月1日',
+    rootNarrative: 'すべてがまだ、あるべき形をしていた時点。',
+    setup: [
+      { kind: 'commit', message: '研究所で火災が発生する',
+        changes: { 'kirishima.alive': 'false', 'lab.device': 'sealed', 'lab.status': 'closed' },
+        narrative: '深夜二時、第三研究棟から出火。霧島は装置の前から動かなかったという。' },
+      { kind: 'branch', name: 'observation', at: 'c1' },
+      { kind: 'checkout', target: { type: 'branch', branch: 'observation' } },
+      { kind: 'commit', message: '観測装置が完成する',
+        changes: { 'lab.device': 'complete' },
+        narrative: '回収された別世界線の記録。そこでは装置は完成し、最初の観測が行われていた。' },
+      { kind: 'checkout', target: { type: 'branch', branch: 'main' } }
+    ],
+    goals: [
+      { id: 'kirishima-alive', label: '霧島湊が生存している',
+        predicate: { type: 'factEquals', key: 'kirishima.alive', value: 'true' } },
+      { id: 'device-complete', label: '観測装置が完成している',
+        predicate: { type: 'factEquals', key: 'lab.device', value: 'complete' } },
+      { id: 'history-preserved', label: '火災の記録を消していない',
+        predicate: { type: 'historyPreserved', commitId: 'c2' } },
+      { id: 'no-orphan-branch', label: '観測記録の世界線を残したまま達成した', optional: true,
+        predicate: { type: 'branchExists', branch: 'observation' } }
+    ],
+    moveLimit: 4,
+    causalLoadLimit: 6,
+    hints: [
+      '火災の記録を消さずに、その影響だけを打ち消す方法がある。',
+      '先に火災を打ち消しておかないと、観測記録を統合したときに現実が食い違う。',
+      'revert で火災を打ち消してから、observation を merge する。'
+    ]
+  };
+
+  const COST = { commit: 1, branch: 0, checkout: 0, merge: 2, revert: 2, reset: 5 };
+
+  // 事実キーの表示名。ドメインは git 語彙、表示はゲーム語彙。
+  const FACT_LABEL = {
+    'kirishima.alive': '霧島湊の生存',
+    'lab.device': '観測装置',
+    'lab.status': '研究所'
+  };
+  const FACT_VALUE = {
+    'true': '生存', 'false': '死亡',
+    prototype: '試作段階', sealed: '封印', complete: '完成',
+    operating: '稼働中', closed: '閉鎖'
+  };
+  const showFact = (k) => FACT_LABEL[k] || k;
+  const showValue = (v) => (v === null || v === undefined ? '——' : (FACT_VALUE[v] || v));
+
+  // =========================================================================
+  // Timeline Engine（packages/core のロジックを踏襲した簡易版）
+  // =========================================================================
+  const applyChanges = (base, changes) => {
+    const next = { ...base };
+    for (const [k, v] of Object.entries(changes)) {
+      if (v === null) delete next[k]; else next[k] = v;
+    }
+    return next;
+  };
+
+  const diffStates = (from, to) => {
+    const d = {};
+    for (const [k, v] of Object.entries(to)) if (from[k] !== v) d[k] = v;
+    for (const k of Object.keys(from)) if (!(k in to)) d[k] = null;
+    return d;
+  };
+
+  const ancestorsOf = (s, id) => {
+    const seen = new Set(); const q = [id];
+    while (q.length) {
+      const cur = q.shift();
+      if (seen.has(cur)) continue;
+      const c = s.commits[cur];
+      if (!c) continue;
+      seen.add(cur); q.push(...c.parents);
+    }
+    return seen;
+  };
+
+  const isAncestorOf = (s, a, b) => ancestorsOf(s, b).has(a);
+  const resolveHead = (s) => s.head.type === 'detached' ? s.head.commitId : s.branches[s.head.branch];
+  const worldAt = (s, id) => s.commits[id].snapshot;
+  const currentWorld = (s) => worldAt(s, resolveHead(s));
+
+  const mergeBase = (s, a, b) => {
+    const aa = ancestorsOf(s, a), bb = ancestorsOf(s, b);
+    const common = [...aa].filter((id) => bb.has(id));
+    if (!common.length) return null;
+    const nearest = common.filter((c) =>
+      !common.some((o) => o !== c && ancestorsOf(s, o).has(c)));
+    const pool = nearest.length ? nearest : common;
+    return pool.reduce((acc, id) =>
+      s.commits[id].sequence > s.commits[acc].sequence ? id : acc, pool[0]);
+  };
+
+  const threeWayMerge = (base, ours, theirs) => {
+    const keys = new Set([...Object.keys(base), ...Object.keys(ours), ...Object.keys(theirs)]);
+    const merged = {}; const conflicts = [];
+    for (const k of keys) {
+      const b = k in base ? base[k] : null;
+      const o = k in ours ? ours[k] : null;
+      const t = k in theirs ? theirs[k] : null;
+      let r;
+      if (o === t) r = o;
+      else if (o === b) r = t;
+      else if (t === b) r = o;
+      else { conflicts.push({ key: k, base: b, ours: o, theirs: t }); r = o; }
+      if (r !== null) merged[k] = r;
+    }
+    return { merged, conflicts };
+  };
+
+  const createTimeline = () => {
+    const root = {
+      id: 'c1', parents: [], message: STAGE.rootMessage,
+      snapshot: { ...STAGE.initialFacts }, changes: { ...STAGE.initialFacts },
+      narrative: STAGE.rootNarrative, sequence: 1
+    };
+    return {
+      commits: { c1: root }, branches: { main: 'c1' },
+      head: { type: 'branch', branch: 'main' }, reflog: [], nextSequence: 2
+    };
+  };
+
+  const addCommit = (s, parents, message, snapshot, narrative) => {
+    const seq = s.nextSequence;
+    const id = 'c' + seq;
+    const parentSnap = parents.length ? worldAt(s, parents[0]) : {};
+    const commit = {
+      id, parents, message, snapshot,
+      changes: diffStates(parentSnap, snapshot), narrative, sequence: seq
+    };
+    const branches = { ...s.branches };
+    let head = s.head;
+    if (s.head.type === 'branch') branches[s.head.branch] = id;
+    else head = { type: 'detached', commitId: id };
+    return {
+      ...s, commits: { ...s.commits, [id]: commit },
+      branches, head, nextSequence: seq + 1
+    };
+  };
+
+  // 能力の実行。失敗は { error } で返す（core の Result 型に相当）。
+  const execute = (s, cmd) => {
+    switch (cmd.kind) {
+      case 'commit': {
+        const parent = resolveHead(s);
+        const snap = applyChanges(worldAt(s, parent), cmd.changes);
+        return { state: addCommit(s, [parent], cmd.message, snap, cmd.narrative) };
+      }
+      case 'branch': {
+        const tip = cmd.at || resolveHead(s);
+        return { state: { ...s, branches: { ...s.branches, [cmd.name]: tip } } };
+      }
+      case 'checkout': {
+        if (cmd.target.type === 'branch') {
+          if (!(cmd.target.branch in s.branches)) return { error: 'BranchNotFound' };
+          return { state: { ...s, head: { type: 'branch', branch: cmd.target.branch } } };
+        }
+        return { state: { ...s, head: { type: 'detached', commitId: cmd.target.commitId } } };
+      }
+      case 'revert': {
+        const target = s.commits[cmd.targetId];
+        if (!target) return { error: 'CommitNotFound' };
+        const parent = target.parents[0];
+        const before = parent ? worldAt(s, parent) : {};
+        const undo = {};
+        for (const k of Object.keys(target.changes)) {
+          undo[k] = k in before ? before[k] : null;
+        }
+        const head = resolveHead(s);
+        const snap = applyChanges(worldAt(s, head), undo);
+        if (!Object.keys(diffStates(worldAt(s, head), snap)).length) {
+          return { error: 'NothingToCommit' };
+        }
+        return { state: addCommit(s, [head], 'Revert: ' + target.message, snap,
+          'その出来事は打ち消された。ただし、起きたという記録は残る。') };
+      }
+      case 'merge': {
+        const ours = resolveHead(s);
+        const theirs = s.branches[cmd.from];
+        if (!theirs) return { error: 'BranchNotFound' };
+        if (isAncestorOf(s, theirs, ours)) return { error: 'AlreadyUpToDate' };
+        if (isAncestorOf(s, ours, theirs)) {
+          if (s.head.type !== 'branch') return { error: 'DetachedHeadNotAllowed' };
+          return { state: { ...s, branches: { ...s.branches, [s.head.branch]: theirs } } };
+        }
+        const base = mergeBase(s, ours, theirs);
+        if (!base) return { error: 'NoMergeBase' };
+        const analysis = threeWayMerge(worldAt(s, base), worldAt(s, ours), worldAt(s, theirs));
+        const resolutions = cmd.resolutions || {};
+        const unresolved = analysis.conflicts.filter((c) => !(c.key in resolutions));
+        if (unresolved.length) return { error: 'MergeConflict', analysis, unresolved };
+
+        const snap = { ...analysis.merged };
+        for (const c of analysis.conflicts) {
+          const r = resolutions[c.key];
+          const v = r.type === 'ours' ? c.ours : r.type === 'theirs' ? c.theirs : r.value;
+          if (v === null) delete snap[c.key]; else snap[c.key] = v;
+        }
+        return { state: addCommit(s, [ours, theirs], "Merge branch " + cmd.from, snap,
+          '二つの世界線が一つに束ねられた。') };
+      }
+      case 'reset': {
+        if (s.head.type !== 'branch') return { error: 'DetachedHeadNotAllowed' };
+        return { state: { ...s, branches: { ...s.branches, [s.head.branch]: cmd.targetId } } };
+      }
+      default: return { error: 'AbilityNotAvailable' };
+    }
+  };
+
+  const reachable = (s) => {
+    const set = new Set();
+    for (const tip of Object.values(s.branches)) for (const id of ancestorsOf(s, tip)) set.add(id);
+    return set;
+  };
+
+  const evalPredicate = (s, p) => {
+    const w = currentWorld(s);
+    switch (p.type) {
+      case 'factEquals': return w[p.key] === p.value;
+      case 'factExists': return p.key in w;
+      case 'factAbsent': return !(p.key in w);
+      case 'branchExists': return p.branch in s.branches;
+      case 'historyPreserved': return reachable(s).has(p.commitId);
+      default: return false;
+    }
+  };
+
+  // =========================================================================
+  // 進行状態
+  // =========================================================================
+  let session;
+  let selected = null;
+  let hintIndex = 0;
+
+  const buildInitial = () => {
+    let s = createTimeline();
+    for (const step of STAGE.setup) s = execute(s, step).state;
+    return s;
+  };
+
+  const startStage = () => {
+    session = { timeline: buildInitial(), moves: 0, load: 0, past: [], cleared: false };
+    selected = null;
+    hintIndex = 0;
+  };
+
+  const play = (cmd) => {
+    const counts = cmd.kind !== 'checkout';
+    const nextMoves = session.moves + (counts ? 1 : 0);
+    if (counts && nextMoves > STAGE.moveLimit) return { error: 'MoveLimitExceeded' };
+    const nextLoad = session.load + (COST[cmd.kind] || 0);
+    if (nextLoad > STAGE.causalLoadLimit) return { error: 'CausalLoadExceeded' };
+
+    const result = execute(session.timeline, cmd);
+    if (result.error) return result;
+
+    session = {
+      timeline: result.state,
+      moves: nextMoves,
+      load: nextLoad,
+      past: [...session.past, { timeline: session.timeline, moves: session.moves, load: session.load, selected }],
+      cleared: false
+    };
+    return { ok: true };
+  };
+
+  const ERROR_TEXT = {
+    AlreadyUpToDate: 'その世界線はすでに取り込まれている。',
+    BranchNotFound: 'その世界線は存在しない。',
+    NothingToCommit: 'この時点では、世界は何も変わらない。',
+    MoveLimitExceeded: '手数の上限に達している。',
+    CausalLoadExceeded: '因果負荷が限界を超える。これ以上は世界がもたない。',
+    DetachedHeadNotAllowed: '世界線上にいないため、この操作はできない。',
+    CommitNotFound: 'その時点は観測できない。'
+  };
+
+  // =========================================================================
+  // 描画
+  // =========================================================================
+  const $ = (id) => document.getElementById(id);
+
+  const laneOf = (s) => {
+    // first-parent を辿って、ブランチごとにレーンを割り当てる。
+    const lanes = {};
+    const names = Object.keys(s.branches);
+    names.sort((a, b) => (a === 'main' ? -1 : b === 'main' ? 1 : a.localeCompare(b)));
+    names.forEach((name, i) => {
+      let cur = s.branches[name];
+      while (cur && !(cur in lanes)) {
+        lanes[cur] = i;
+        cur = s.commits[cur].parents[0];
+      }
+    });
+    for (const id of Object.keys(s.commits)) if (!(id in lanes)) lanes[id] = names.length;
+    return lanes;
+  };
+
+  const renderGraph = () => {
+    const s = session.timeline;
+    const svg = $('graph');
+    const lanes = laneOf(s);
+    const commits = Object.values(s.commits).sort((a, b) => a.sequence - b.sequence);
+
+    const X0 = 74, DX = 132, Y0 = 62, DY = 108, R = 11;
+    const maxLane = Math.max(...Object.values(lanes));
+    const width = Math.max(X0 + DX * Math.max(1, commits.length - 1) + 190, 560);
+    const height = Y0 + DY * maxLane + 130;
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+
+    const pos = {};
+    commits.forEach((c, i) => { pos[c.id] = { x: X0 + i * DX, y: Y0 + lanes[c.id] * DY }; });
+
+    const headId = resolveHead(s);
+    const parts = [];
+
+    // エッジ
+    for (const c of commits) {
+      c.parents.forEach((p, idx) => {
+        const a = pos[p], b = pos[c.id];
+        if (!a || !b) return;
+        const cls = idx === 0 ? 'edge' : 'edge second-parent';
+        const d = a.y === b.y
+          ? `M ${a.x + R} ${a.y} L ${b.x - R} ${b.y}`
+          : `M ${a.x + R} ${a.y} C ${a.x + DX * 0.55} ${a.y}, ${b.x - DX * 0.55} ${b.y}, ${b.x - R} ${b.y}`;
+        parts.push(`<path class="${cls}" d="${d}" />`);
+      });
+    }
+
+    // ノード
+    for (const c of commits) {
+      const p = pos[c.id];
+      const anomaly = c.changes['kirishima.alive'] === 'false';
+      const classes = ['node-ring'];
+      if (anomaly) classes.push('is-anomaly');
+      if (c.id === headId) classes.push('is-head');
+      if (c.id === selected) classes.push('is-selected');
+
+      const msg = c.message.length > 13 ? c.message.slice(0, 12) + '…' : c.message;
+      parts.push(`
+        <g class="node-hit" data-id="${c.id}" tabindex="0" role="button"
+           aria-label="${c.id} ${c.message}">
+          <circle class="${classes.join(' ')}" cx="${p.x}" cy="${p.y}" r="${R}" />
+          <text class="node-id" x="${p.x}" y="${p.y - 20}" text-anchor="middle">${c.id.toUpperCase()}</text>
+          <text class="node-msg${anomaly ? ' is-anomaly' : ''}" x="${p.x}" y="${p.y + 32}"
+                text-anchor="middle">${msg}</text>
+        </g>`);
+    }
+
+    // ブランチ札
+    for (const [name, tip] of Object.entries(s.branches)) {
+      const p = pos[tip];
+      if (!p) continue;
+      const isHead = s.head.type === 'branch' && s.head.branch === name;
+      const w = name.length * 6.6 + 16;
+      parts.push(`
+        <g>
+          <rect class="ref-box${isHead ? ' is-head' : ''}" x="${p.x + R + 9}" y="${p.y - 9}"
+                width="${w}" height="18" />
+          <text class="ref-tag${isHead ? ' is-head' : ''}" x="${p.x + R + 9 + w / 2}" y="${p.y + 4}"
+                text-anchor="middle">${name}</text>
+        </g>`);
+    }
+
+    svg.innerHTML = parts.join('');
+    svg.querySelectorAll('.node-hit').forEach((el) => {
+      const pick = () => { selected = el.dataset.id; render(); };
+      el.addEventListener('click', pick);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); }
+      });
+    });
+  };
+
+  const renderGoals = () => {
+    const s = session.timeline;
+    $('goals').innerHTML = STAGE.goals.map((g) => {
+      const done = evalPredicate(s, g.predicate);
+      return `<div class="goal" data-done="${done}" data-optional="${!!g.optional}">
+        <span class="tick"></span>
+        <span class="goal-text">${g.label}</span>
+      </div>`;
+    }).join('');
+  };
+
+  const renderWorld = () => {
+    const w = currentWorld(session.timeline);
+    $('world').innerHTML = Object.entries(w).map(([k, v]) =>
+      `<div class="diff-row"><span class="sign">·</span>
+       <span class="val">${showFact(k)} = ${showValue(v)}</span></div>`
+    ).join('');
+  };
+
+  const renderBranches = () => {
+    const s = session.timeline;
+    $('branches').innerHTML = Object.entries(s.branches).map(([name, tip]) => {
+      const cur = s.head.type === 'branch' && s.head.branch === name;
+      return `<button class="branch-item" type="button" data-branch="${name}" aria-current="${cur}">
+        <span>${name}</span><span class="tip">${tip.toUpperCase()}</span></button>`;
+    }).join('');
+    $('branches').querySelectorAll('[data-branch]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const r = play({ kind: 'checkout', target: { type: 'branch', branch: el.dataset.branch } });
+        if (r.error) toast(ERROR_TEXT[r.error] || r.error, true);
+        render();
+      });
+    });
+  };
+
+  const renderRecord = () => {
+    const s = session.timeline;
+    const id = selected || resolveHead(s);
+    const c = s.commits[id];
+    if (!c) return;
+    $('record-label').textContent = `観測記録 — ${c.id.toUpperCase()}`;
+    $('record-text').textContent = c.narrative || c.message;
+    $('record-diff').innerHTML = Object.entries(c.changes).map(([k, v]) => {
+      const cls = v === null ? 'del' : 'add';
+      const sign = v === null ? '−' : '+';
+      return `<div class="diff-row ${cls}"><span class="sign">${sign}</span>
+        <span class="val">${showFact(k)} = ${showValue(v)}</span></div>`;
+    }).join('') || '<div class="diff-row"><span class="sign">·</span><span class="val">変化なし</span></div>';
+  };
+
+  const renderMeters = () => {
+    const m = $('m-moves'); const l = $('m-load');
+    m.textContent = `${session.moves}/${STAGE.moveLimit}`;
+    l.textContent = `${session.load}/${STAGE.causalLoadLimit}`;
+    m.classList.toggle('warn', session.moves >= STAGE.moveLimit);
+    l.classList.toggle('warn', session.load >= STAGE.causalLoadLimit);
+  };
+
+  const renderAbilities = () => {
+    const s = session.timeline;
+    const canRevert = !!selected && selected !== 'c1';
+    $('a-revert').disabled = !canRevert;
+    const others = Object.keys(s.branches).filter((b) =>
+      !(s.head.type === 'branch' && s.head.branch === b));
+    $('a-merge').disabled = others.length === 0;
+    $('ability-hint').textContent = selected
+      ? `${selected.toUpperCase()} を選択中。REVERT でこの出来事を打ち消せる。`
+      : '時点を選ぶと、その出来事を打ち消せる。';
+    $('btn-undo').disabled = session.past.length === 0;
+  };
+
+  const render = () => {
+    renderGraph(); renderGoals(); renderWorld();
+    renderBranches(); renderRecord(); renderMeters(); renderAbilities();
+    checkClear();
+  };
+
+  // =========================================================================
+  // ダイアログ
+  // =========================================================================
+  const closeDialog = () => { $('scrim').hidden = true; $('dialog').innerHTML = ''; };
+
+  const openDialog = (html, alert) => {
+    $('dialog').className = 'dialog' + (alert ? ' is-alert' : '');
+    $('dialog').innerHTML = html;
+    $('scrim').hidden = false;
+    const first = $('dialog').querySelector('button');
+    if (first) first.focus();
+  };
+
+  let toastTimer;
+  const toast = (msg, isError) => {
+    const el = $('toast');
+    el.textContent = msg;
+    el.className = 'toast' + (isError ? ' is-error' : '');
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+  };
+
+  const showIntro = () => {
+    openDialog(`
+      <span class="label">STAGE CH1-01</span>
+      <h2 class="head jp" id="dialog-title">${STAGE.title}</h2>
+      <div class="jp">${STAGE.intro.map((l) => `<p class="intro-line">${l}</p>`).join('')}</div>
+      <div class="dialog-actions">
+        <button class="btn primary" type="button" id="d-start">観測を開始する</button>
+      </div>`);
+    $('d-start').addEventListener('click', closeDialog);
+  };
+
+  const showConflict = (from, analysis) => {
+    const c = analysis.conflicts[0];
+    openDialog(`
+      <span class="label">CONFLICT — 両立しない現実</span>
+      <h2 class="head jp" id="dialog-title">${showFact(c.key)}が食い違っている</h2>
+      <div class="conflict-block">
+        <div class="conflict-marker">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD（現在の世界線）</div>
+        <button class="choice" type="button" data-side="ours">
+          <span class="side">OURS — 現在の世界線</span>
+          <span>この世界では、${showFact(c.key)}は<strong>${showValue(c.ours)}</strong>のままだ。</span>
+          <span class="val">${c.key} = ${c.ours === null ? '(なし)' : c.ours}</span>
+        </button>
+        <div class="conflict-marker">=======</div>
+        <button class="choice" type="button" data-side="theirs">
+          <span class="side">THEIRS — ${from}</span>
+          <span>回収された記録では、${showFact(c.key)}は<strong>${showValue(c.theirs)}</strong>だった。</span>
+          <span class="val">${c.key} = ${c.theirs === null ? '(なし)' : c.theirs}</span>
+        </button>
+        <div class="conflict-marker">&gt;&gt;&gt;&gt;&gt;&gt;&gt; ${from}</div>
+      </div>
+      <p class="jp" style="margin:0;color:var(--ink-muted);font-size:12px;line-height:1.7">
+        どちらの現実を採用しますか。選ばなかった方は、この世界から失われます。
+      </p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="d-cancel">統合を中止する</button>
+      </div>`, true);
+
+    $('dialog').querySelectorAll('[data-side]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const resolutions = {};
+        for (const cf of analysis.conflicts) resolutions[cf.key] = { type: el.dataset.side };
+        closeDialog();
+        const r = play({ kind: 'merge', from, resolutions });
+        if (r.error) toast(ERROR_TEXT[r.error] || r.error, true);
+        else toast('世界線を統合した');
+        render();
+      });
+    });
+    $('d-cancel').addEventListener('click', closeDialog);
+  };
+
+  const showMergePicker = () => {
+    const s = session.timeline;
+    const others = Object.keys(s.branches).filter((b) =>
+      !(s.head.type === 'branch' && s.head.branch === b));
+    openDialog(`
+      <span class="label">MERGE — 世界線の統合</span>
+      <h2 class="head jp" id="dialog-title">どの世界線を取り込みますか</h2>
+      <div class="conflict-block">
+        ${others.map((b) => `
+          <button class="choice" type="button" data-merge="${b}">
+            <span class="side">BRANCH</span>
+            <span>${b}</span>
+            <span class="val">tip = ${s.branches[b].toUpperCase()}</span>
+          </button>`).join('')}
+      </div>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="d-cancel">やめる</button>
+      </div>`);
+    $('dialog').querySelectorAll('[data-merge]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const from = el.dataset.merge;
+        closeDialog();
+        const r = play({ kind: 'merge', from });
+        if (r.error === 'MergeConflict') { showConflict(from, r.analysis); return; }
+        if (r.error) { toast(ERROR_TEXT[r.error] || r.error, true); render(); return; }
+        toast('世界線を統合した');
+        render();
+      });
+    });
+    $('d-cancel').addEventListener('click', closeDialog);
+  };
+
+  const checkClear = () => {
+    if (session.cleared) return;
+    const required = STAGE.goals.filter((g) => !g.optional);
+    const done = required.every((g) => evalPredicate(session.timeline, g.predicate));
+    if (!done) return;
+    session.cleared = true;
+    const perfect = STAGE.goals.every((g) => evalPredicate(session.timeline, g.predicate));
+    setTimeout(() => {
+      openDialog(`
+        <span class="label">STAGE CLEARED${perfect ? ' — 完全達成' : ''}</span>
+        <h2 class="head jp" id="dialog-title">世界線は修正された</h2>
+        <div class="jp">${STAGE.outro.map((l) => `<p class="intro-line">${l}</p>`).join('')}</div>
+        <div class="conflict-block" style="padding:12px 14px">
+          <div class="diff-row"><span class="sign">·</span>
+            <span class="val">手数 ${session.moves} / ${STAGE.moveLimit}　　因果負荷 ${session.load} / ${STAGE.causalLoadLimit}</span></div>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn" type="button" id="d-again">もう一度</button>
+          <button class="btn primary" type="button" id="d-close">閉じる</button>
+        </div>`);
+      $('d-close').addEventListener('click', closeDialog);
+      $('d-again').addEventListener('click', () => { closeDialog(); startStage(); render(); });
+    }, 420);
+  };
+
+  // =========================================================================
+  // 操作の接続
+  // =========================================================================
+  $('a-revert').addEventListener('click', () => {
+    if (!selected) return;
+    const r = play({ kind: 'revert', targetId: selected });
+    if (r.error) toast(ERROR_TEXT[r.error] || r.error, true);
+    else toast('出来事を打ち消した。記録は残っている。');
+    render();
+  });
+
+  $('a-merge').addEventListener('click', showMergePicker);
+
+  $('a-reset').addEventListener('click', () => {
+    toast('RESET はこの章では行使できない。', true);
+  });
+
+  $('btn-undo').addEventListener('click', () => {
+    const prev = session.past[session.past.length - 1];
+    if (!prev) return;
+    selected = prev.selected;
+    session = { ...prev, past: session.past.slice(0, -1), cleared: false };
+    render();
+  });
+
+  $('btn-reset').addEventListener('click', () => { startStage(); render(); showIntro(); });
+
+  $('btn-hint').addEventListener('click', () => {
+    toast(STAGE.hints[Math.min(hintIndex, STAGE.hints.length - 1)]);
+    hintIndex = Math.min(hintIndex + 1, STAGE.hints.length - 1);
+  });
+
+  $('scrim').addEventListener('click', (e) => { if (e.target === $('scrim')) closeDialog(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDialog(); });
+
+  startStage();
+  render();
+  showIntro();
+})();
+</script>
