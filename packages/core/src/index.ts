@@ -19,6 +19,7 @@ export * from './domain/ability/parse.ts';
 // stage
 export * from './domain/stage/goal.ts';
 export * from './domain/stage/spec.ts';
+export * from './domain/stage/guide.ts';
 export * from './domain/stage/difficulty.ts';
 export * from './domain/stage/generator.ts';
 

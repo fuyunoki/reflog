@@ -1,0 +1,99 @@
+{
+  "id": "ch0-02",
+  "title": "二本目の記録",
+  "chapter": { "number": 0, "title": "観測局へようこそ" },
+  "intro": [
+    "歴史は一本ではない。観測局は、分かれてしまった別の記録も回収している。",
+    "今回はそれを扱う。別の世界線にしか無い出来事を、こちらへ持ってくる訓練だ。"
+  ],
+  "outro": [
+    "二つの記録は、片方を捨てずに一つにできる。それが統合だ。",
+    "——ただし、同じ事柄について食い違う記録が残っていた場合は、そう簡単にはいかない。",
+    "それは現場で教える。"
+  ],
+
+  "initialFacts": {
+    "device.state": "incomplete",
+    "record.state": "scattered"
+  },
+  "rootMessage": "訓練記録の開始",
+  "rootNarrative": "装置は未完成で、記録も散らばったまま。ここから二つの道が分かれる。",
+
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "観測記録が整理される",
+      "changes": { "record.state": "sorted" },
+      "narrative": "こちらの世界線では、まず記録の整理が行われた。装置には誰も手を付けていない。"
+    },
+    { "kind": "branch", "name": "observation", "at": "c1" },
+    { "kind": "checkout", "target": { "type": "branch", "branch": "observation" } },
+    {
+      "kind": "commit",
+      "message": "観測装置が完成する",
+      "changes": { "device.state": "complete" },
+      "narrative": "回収されたもう一本の記録。こちらでは装置が完成していた。記録の整理は行われていない。"
+    },
+    { "kind": "checkout", "target": { "type": "branch", "branch": "main" } }
+  ],
+
+  "goals": [
+    {
+      "id": "device-complete",
+      "label": "観測装置が完成している",
+      "predicate": { "type": "factEquals", "key": "device.state", "value": "complete" }
+    },
+    {
+      "id": "record-sorted",
+      "label": "観測記録が整理されている",
+      "predicate": { "type": "factEquals", "key": "record.state", "value": "sorted" }
+    },
+    {
+      "id": "branch-kept",
+      "label": "回収した世界線を捨てていない",
+      "optional": true,
+      "predicate": { "type": "branchExists", "branch": "observation" }
+    }
+  ],
+
+  "guide": [
+    {
+      "text": "世界線が二本ある。上が今いる世界線 main、下が回収された observation。",
+      "note": "git ではこの枝分かれをブランチと呼ぶ。左の一覧からも切り替えられる。",
+      "until": { "type": "acknowledged" }
+    },
+    {
+      "text": "下の世界線にある時点をクリックしてみる。こちらには無い出来事が起きている。",
+      "until": { "type": "commitSelected", "commitId": "c3" }
+    },
+    {
+      "text": "左の MERGE を押すと、その世界線の出来事をこちらへ取り込める。",
+      "note": "どちらか一方を捨てるのではなく、両方の出来事が残る。git の merge と同じだ。",
+      "until": { "type": "abilityUsed", "ability": "merge" }
+    },
+    {
+      "text": "装置の完成と記録の整理、その両方が揃った。これが統合だ。",
+      "until": { "type": "cleared" }
+    }
+  ],
+
+  "abilities": ["checkout", "merge", "revert"],
+  "moveLimit": 4,
+  "causalLoadLimit": 8,
+
+  "hints": [
+    "observation の世界線を取り込めばよい。",
+    "MERGE を押して observation を選ぶ。"
+  ],
+
+  "factLabels": {
+    "device.state": "観測装置",
+    "record.state": "観測記録"
+  },
+  "valueLabels": {
+    "incomplete": "未完成",
+    "complete": "完成",
+    "scattered": "散逸",
+    "sorted": "整理済み"
+  }
+}

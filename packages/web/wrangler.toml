@@ -1,0 +1,14 @@
+# Cloudflare Pages の設定。
+#
+# API は Pages Functions として同じオリジンで動くので、CORS も別ドメインの
+# Cookie 設定も要らない。認証まわりで最も事故が起きやすい部分を構造的に避けている。
+
+name = "reflog"
+compatibility_date = "2026-08-25"
+pages_build_output_dir = "dist"
+
+# 記録の保存先。`wrangler d1 create reflog` で作り、出力された id をここに貼る。
+[[d1_databases]]
+binding = "DB"
+database_name = "reflog"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"

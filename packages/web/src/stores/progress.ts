@@ -1,9 +1,11 @@
 /**
  * プレイヤーの記録。
  *
- * 未ログインでも遊べることを崩さないため、既定では端末内の匿名 ID で記録する。
- * ログインを実装する際は、ここで注入するリポジトリを D1 版に差し替え、
- * mergeProgress でローカルの記録を統合する。
+ * 未ログインでも遊べることを崩さないため、保存はまず端末に対して行い、
+ * ログインしている場合だけアカウントへ同期する。
+ *
+ * ログインした瞬間には、端末の記録とアカウントの記録を統合する。
+ * どちらかを捨てるようなことはしない —— このゲームの主題に、実装としても従う。
  */
 import { computed, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
@@ -18,18 +20,30 @@ import type {
 import {
   emptyProgress,
   generateMission,
+  mergeProgress,
   recordClearance,
   recordMission,
   toWorldHistory,
 } from '@reflog/core';
 import {
   LOCAL_PLAYER_ID,
-  progressRepository,
+  LocalStorageProgressRepository,
 } from '@/infrastructure/LocalStorageProgressRepository';
+import {
+  SyncingProgressRepository,
+  remoteProgressRepository,
+} from '@/infrastructure/SyncingProgressRepository';
+import { useAuthStore } from './auth';
+
+const localRepository = new LocalStorageProgressRepository();
 
 export const useProgressStore = defineStore('progress', () => {
+  const auth = useAuthStore();
+  const repository = new SyncingProgressRepository(() => auth.signedIn);
+
   const progress = shallowRef<PlayerProgress>(emptyProgress(LOCAL_PLAYER_ID));
   const loaded = shallowRef(false);
+  const syncing = shallowRef(false);
 
   const difficulty = computed<DifficultyLevel>(() => progress.value.currentDifficulty);
   const missionNumber = computed(() => progress.value.nextMissionNumber);
@@ -43,13 +57,38 @@ export const useProgressStore = defineStore('progress', () => {
 
   const recordOf = (stageId: StageId) => progress.value.records[stageId];
 
+  const currentPlayerId = (): string => auth.user?.playerId ?? LOCAL_PLAYER_ID;
+
   async function load(): Promise<void> {
-    progress.value = await progressRepository.load(LOCAL_PLAYER_ID);
+    progress.value = await repository.load(currentPlayerId());
     loaded.value = true;
   }
 
   async function persist(): Promise<void> {
-    await progressRepository.save(progress.value);
+    await repository.save(progress.value);
+  }
+
+  /**
+   * ログイン直後に呼ぶ。端末の記録とアカウントの記録を束ねて、両方へ書き戻す。
+   */
+  async function mergeWithAccount(): Promise<void> {
+    if (!auth.signedIn || !auth.user) return;
+
+    syncing.value = true;
+    try {
+      const local = await localRepository.load(LOCAL_PLAYER_ID);
+      const remote = await remoteProgressRepository.load(auth.user.playerId);
+      const merged = mergeProgress(local, remote);
+
+      progress.value = merged;
+      await repository.save(merged);
+      loaded.value = true;
+    } catch {
+      // 同期できなくても、端末の記録で遊び続けられる
+      if (!loaded.value) await load();
+    } finally {
+      syncing.value = false;
+    }
   }
 
   /** 本編のクリアを記録する。決断もここで積まれる。 */
@@ -82,6 +121,7 @@ export const useProgressStore = defineStore('progress', () => {
   return {
     progress,
     loaded,
+    syncing,
     difficulty,
     missionNumber,
     history,
@@ -90,6 +130,7 @@ export const useProgressStore = defineStore('progress', () => {
     recordOf,
     load,
     persist,
+    mergeWithAccount,
     recordClear,
     recordMissionResult,
     drawMission,

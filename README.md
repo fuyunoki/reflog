@@ -6,6 +6,7 @@ GitHub アカウントを素材に取り込み、**タイムライン（コミ�
 - 構想: [docs/concept.md](docs/concept.md)
 - アーキテクチャ: [docs/architecture.md](docs/architecture.md)
 - 進行設計（物語・無限性・難易度・アカウント）: [docs/progression.md](docs/progression.md)
+- デプロイとアカウント連携: [docs/deployment.md](docs/deployment.md)
 - UI モック（実際に第 1 章が遊べる）: [docs/mock/stage-ui.html](docs/mock/stage-ui.html)
 
 ## 現在の状態
@@ -17,8 +18,9 @@ Phase 0（Timeline Engine のコア）まで完了。
 | 0 | Timeline Engine コア + ステージ定義 + 目標判定 | 完了 |
 | 0.5 | 自動生成・難易度・物語分岐・記録の統合（ドメイン） | 完了 |
 | 1 | Vue アプリ、SVG 可視化、conflict 解決 UI、コマンドコンソール | 完了 |
-| 2 | 第 1 章の残りシナリオ、演出の作り込み | 未着手 |
-| 3 | GitHub OAuth + Workers + D1（アカウント） | 未着手 |
+| 2 | 訓練章（CH 00）、段階的な手引き | 完了 |
+| 3 | GitHub OAuth + Pages Functions + D1（アカウント） | 完了 |
+| 3.5 | 第 1 章の残りシナリオ、演出の作り込み | 未着手 |
 | 4 | cherry-pick / rebase / bisect / reflog と後半章 | 未着手 |
 | 5 | ステージエディタ、ランキング、UGC | 未着手 |
 
@@ -42,6 +44,8 @@ packages/
       presentation/  コンポーネント、SVG レイアウト、語彙の翻訳、デザイントークン
       stores/        Pinia（ViewModel 兼 Controller）
       infrastructure/ ステージ読み込み、進捗保存
+    functions/     Pages Functions（認証と記録の API）
+    migrations/    D1 のスキーマ
 content/
   stages/          ステージ定義（JSON）。シナリオ追加 = JSON 追加
 docs/              構想・アーキテクチャ・進行設計・UI モック
@@ -62,6 +66,15 @@ npm run typecheck # 型チェック
 ```bash
 npm run dev -w @reflog/web
 ```
+
+### 初めて遊ぶ人向けの導線
+
+- ホームで「何をする遊びなのか」を世界観より先に言い切る
+- 用語の対応表（時点＝コミット、世界線＝ブランチ…）を折りたためる形で置く
+- 訓練章（CH 00）で操作を一つずつ教える。手引きは条件を満たすと自動で次へ進む
+
+手引きの進み具合はセッションから毎回導出しているので、
+アンドゥしても手引きだけが取り残されることがない。
 
 ### 操作には二つの入口がある
 

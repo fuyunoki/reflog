@@ -24,6 +24,7 @@ import type {
 import {
   canUndo as canUndoSession,
   parseCommand,
+  resolveGuide,
   playAbility,
   previewMerge,
   resolveHead,
@@ -69,6 +70,8 @@ export const useSessionStore = defineStore('session', () => {
   const notice = ref<Notice | null>(null);
   const introOpen = ref(false);
   const outroOpen = ref(false);
+  /** 手引きのうち、読むだけの段をいくつ読み終えたか。 */
+  const guideRead = ref(0);
   const lastError = shallowRef<DomainError | null>(null);
 
   const inputMode = ref<InputMode>(readStoredMode());
@@ -107,6 +110,29 @@ export const useSessionStore = defineStore('session', () => {
     const head = session.value.timeline.head;
     return branches.value.filter((b) => !(head.type === 'branch' && head.branch === b));
   });
+
+  /**
+   * 手引きの現在地。セッションから毎回導出するので、
+   * アンドゥしても手引きだけが先に進んだままにならない。
+   */
+  const guide = computed(() => {
+    const current = session.value;
+    if (!current) {
+      return { current: null, index: 0, total: 0, finished: true };
+    }
+    return resolveGuide(current.spec.guide, {
+      selected: selected.value,
+      commands: current.commands,
+      report: current.report,
+      cleared: current.status === 'cleared',
+      acknowledged: guideRead.value,
+    });
+  });
+
+  /** 読むだけの段を読み終えたことにする。 */
+  function acknowledgeGuide(): void {
+    guideRead.value += 1;
+  }
 
   const allConflictsDecided = computed(() => {
     const pending = pendingConflict.value;
@@ -159,6 +185,7 @@ export const useSessionStore = defineStore('session', () => {
     conflictChoices.value = {};
     introOpen.value = next.intro.length > 0;
     outroOpen.value = false;
+    guideRead.value = 0;
     consoleLines.value = [];
     lineId = 0;
     emit('note', `${next.title} — help と打つと使えるコマンドが出る。`);
@@ -411,6 +438,7 @@ export const useSessionStore = defineStore('session', () => {
     inputMode,
     consoleLines,
     commandHistory,
+    guideRead,
     // getters
     spec,
     timeline,
@@ -423,6 +451,7 @@ export const useSessionStore = defineStore('session', () => {
     branches,
     mergeableBranches,
     allConflictsDecided,
+    guide,
     // actions
     start,
     restart,
@@ -439,6 +468,7 @@ export const useSessionStore = defineStore('session', () => {
     notify,
     dismissNotice,
     runCommand,
+    acknowledgeGuide,
     setMode,
     toggleMode,
   };

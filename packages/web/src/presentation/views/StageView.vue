@@ -19,6 +19,7 @@ import RecordPanel from '@/presentation/components/RecordPanel.vue';
 import ConflictDialog from '@/presentation/components/ConflictDialog.vue';
 import ModalShell from '@/presentation/components/ModalShell.vue';
 import CommandConsole from '@/presentation/components/CommandConsole.vue';
+import GuidePanel from '@/presentation/components/GuidePanel.vue';
 
 const props = defineProps<{ spec: StageSpec }>();
 const emit = defineEmits<{
@@ -284,6 +285,10 @@ const onBranch = (): void => {
       />
 
       <section class="viewport">
+        <div v-if="store.guide.current" class="guide-slot">
+          <GuidePanel :guide="store.guide" @acknowledge="store.acknowledgeGuide()" />
+        </div>
+
         <TimelineGraph
           :state="store.timeline"
           :selected="store.selected"
@@ -569,6 +574,16 @@ const onBranch = (): void => {
   overflow: auto;
   min-width: 0;
   min-height: 0;
+}
+
+/* 手引きは盤面の上に貼り付けるが、図そのものは隠さない */
+.guide-slot {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  padding: 10px 12px 0;
+  width: min(100%, 620px);
 }
 
 .legend {

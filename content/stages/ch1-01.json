@@ -1,18 +1,21 @@
 {
   "id": "ch1-01",
   "title": "白鷺研究所の火災",
-  "chapter": { "number": 1, "title": "世界線という概念" },
+  "chapter": {
+    "number": 1,
+    "title": "世界線という概念"
+  },
   "intro": [
-    "1998年11月4日、白鷺研究所。",
-    "観測記録によれば、この世界線では研究員・霧島湊が火災で死亡し、開発中だった時間観測装置は封印された。",
-    "だが本来の歴史では、湊は生存し、装置は完成しているはずだった。",
-    "——観測班が別の世界線の記録を回収している。そちらでは、装置は完成していた。"
+    "訓練は終わりだ。ここからは実際の記録を扱う。",
+    "1998年11月4日、白鷺研究所で火災。研究員の霧島湊が亡くなり、彼が作っていた観測装置は封印された。",
+    "だが本来、この火災は起きないはずだった。どこかで歴史が捻じれている。",
+    "観測班が、火災の起きなかった世界線の記録を回収してきた。そちらでは装置は完成している。",
+    "霧島を助け、装置を完成させること。それが今回の修正だ。"
   ],
   "outro": [
     "火災は「起きなかったこと」にはならない。記録には残る。打ち消した、という事実ごと残る。",
     "それでいい、と主任は言った。消してしまえば、誰も彼を悼めなくなる。"
   ],
-
   "initialFacts": {
     "kirishima.alive": "true",
     "lab.device": "prototype",
@@ -20,7 +23,6 @@
   },
   "rootMessage": "観測開始: 1998年11月1日",
   "rootNarrative": "すべてがまだ、あるべき形をしていた時点。",
-
   "setup": [
     {
       "kind": "commit",
@@ -32,48 +34,118 @@
       },
       "narrative": "深夜二時、第三研究棟から出火。霧島は装置の前から動かなかったという。"
     },
-    { "kind": "branch", "name": "observation", "at": "c1" },
-    { "kind": "checkout", "target": { "type": "branch", "branch": "observation" } },
+    {
+      "kind": "branch",
+      "name": "observation",
+      "at": "c1"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "observation"
+      }
+    },
     {
       "kind": "commit",
       "message": "観測装置が完成する",
-      "changes": { "lab.device": "complete" },
+      "changes": {
+        "lab.device": "complete"
+      },
       "narrative": "回収された別世界線の記録。そこでは装置は完成し、最初の観測が行われていた。"
     },
-    { "kind": "checkout", "target": { "type": "branch", "branch": "main" } }
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
   ],
-
   "goals": [
     {
       "id": "kirishima-alive",
       "label": "霧島湊が生存している",
-      "predicate": { "type": "factEquals", "key": "kirishima.alive", "value": "true" }
+      "predicate": {
+        "type": "factEquals",
+        "key": "kirishima.alive",
+        "value": "true"
+      }
     },
     {
       "id": "device-complete",
       "label": "観測装置が完成している",
-      "predicate": { "type": "factEquals", "key": "lab.device", "value": "complete" }
+      "predicate": {
+        "type": "factEquals",
+        "key": "lab.device",
+        "value": "complete"
+      }
     },
     {
       "id": "history-preserved",
       "label": "火災の記録を消していない",
-      "predicate": { "type": "historyPreserved", "commitId": "c2" }
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c2"
+      }
     },
     {
       "id": "no-orphan-branch",
       "label": "観測記録の世界線を残したまま達成した",
       "optional": true,
-      "predicate": { "type": "branchExists", "branch": "observation" }
+      "predicate": {
+        "type": "branchExists",
+        "branch": "observation"
+      }
     }
   ],
-
-  "abilities": ["checkout", "revert", "merge", "branch"],
+  "abilities": [
+    "checkout",
+    "revert",
+    "merge",
+    "branch"
+  ],
   "moveLimit": 4,
   "causalLoadLimit": 6,
-
   "hints": [
     "火災の記録を消さずに、その影響だけを打ち消す方法がある。",
     "先に火災を打ち消しておかないと、観測記録を統合したときに現実が食い違う。",
     "revert で火災を打ち消してから、observation を merge する。"
-  ]
+  ],
+  "guide": [
+    {
+      "text": "上が今いる世界線 main。赤い丸が火災の起きた時点だ。下が回収された observation。",
+      "note": "どちらの時点もクリックすれば、そこで何が起きたか読める。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "右の達成条件をすべて満たせば修正完了。手数と因果負荷には限りがある。",
+      "note": "因果負荷は歴史を歪めた代償。乱暴な手ほど多く消費する。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "あとは自分で考えてみてほしい。詰まったら左下の「助言を求める」を押す。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "kirishima.alive": "霧島湊の生存",
+    "lab.device": "観測装置",
+    "lab.status": "白鷺研究所"
+  },
+  "valueLabels": {
+    "true": "生存",
+    "false": "死亡",
+    "prototype": "試作段階",
+    "sealed": "封印",
+    "complete": "完成",
+    "operating": "稼働中",
+    "closed": "閉鎖"
+  }
 }

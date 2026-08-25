@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "typecheck:functions": "tsc --noEmit -p functions/tsconfig.json",
+    "cf:dev": "wrangler pages dev dist",
+    "cf:migrate": "wrangler d1 execute reflog --file=./migrations/0001_init.sql --remote",
+    "cf:deploy": "npm run build && wrangler pages deploy dist"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260825.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "vite": "^8.2.2",
     "vue-tsc": "^3.3.11"

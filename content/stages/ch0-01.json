@@ -1,0 +1,82 @@
+{
+  "id": "ch0-01",
+  "title": "着任",
+  "chapter": { "number": 0, "title": "観測局へようこそ" },
+  "intro": [
+    "観測局へようこそ。今日からあなたは「世界線修正官」だ。",
+    "仕事は単純に言える。壊れた歴史を見つけ、あるべき形に戻す。",
+    "まずは訓練用の記録で手を動かしてもらう。失敗しても、この記録は誰の人生でもない。"
+  ],
+  "outro": [
+    "これで一通りだ。",
+    "ひとつ覚えておいてほしい。我々は「なかったこと」にはしない。打ち消した、という事実ごと残す。",
+    "消してしまえば、それが起きたことを誰も知らなくなるからだ。"
+  ],
+
+  "initialFacts": {
+    "lamp.state": "lit"
+  },
+  "rootMessage": "訓練記録の開始",
+  "rootNarrative": "観測室の灯りがついている。ごく普通の、何も起きていない時点。",
+
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "観測室の灯りが消える",
+      "changes": { "lamp.state": "out" },
+      "narrative": "ある時刻、灯りが消えた。訓練用に仕込まれた異常だ。"
+    }
+  ],
+
+  "goals": [
+    {
+      "id": "lamp-lit",
+      "label": "観測室の灯りがついている",
+      "predicate": { "type": "factEquals", "key": "lamp.state", "value": "lit" }
+    },
+    {
+      "id": "history-preserved",
+      "label": "異常の記録を消していない",
+      "predicate": { "type": "historyPreserved", "commitId": "c2" }
+    }
+  ],
+
+  "guide": [
+    {
+      "text": "画面の中央にある丸の並びが「世界線」。丸ひとつが「時点」で、その瞬間に何が起きたかの記録だ。",
+      "note": "git では、この時点のことをコミットと呼ぶ。",
+      "until": { "type": "acknowledged" }
+    },
+    {
+      "text": "赤い丸が、異常の起きた時点。クリックして選んでみる。",
+      "note": "選ぶと、画面の下にその時点で何が起きたかが出る。",
+      "until": { "type": "commitSelected", "commitId": "c2" }
+    },
+    {
+      "text": "左の REVERT を押す。その出来事の影響だけを打ち消せる。",
+      "note": "起きたという記録は残る。消すのではなく、打ち消す。git の revert と同じ意味だ。",
+      "until": { "type": "abilityUsed", "ability": "revert" }
+    },
+    {
+      "text": "右の「達成すべき世界の状態」がすべて埋まれば、修正は完了になる。",
+      "until": { "type": "cleared" }
+    }
+  ],
+
+  "abilities": ["checkout", "revert"],
+  "moveLimit": 4,
+  "causalLoadLimit": 8,
+
+  "hints": [
+    "異常の起きた時点を選んでから、REVERT を押す。",
+    "打ち消す対象は、灯りが消えた時点（C2）。"
+  ],
+
+  "factLabels": {
+    "lamp.state": "観測室の灯り"
+  },
+  "valueLabels": {
+    "lit": "点いている",
+    "out": "消えている"
+  }
+}

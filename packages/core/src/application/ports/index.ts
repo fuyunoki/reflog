@@ -90,11 +90,12 @@ export type AuthError =
  */
 export interface AuthGateway {
   /** 現在のログイン状態。未ログインなら null。 */
-  currentUser(): Promise<AuthenticatedUser | null>;
-  /** OAuth の開始。実装はリダイレクトまたはポップアップ。 */
-  beginLogin(): Promise<void>;
-  /** リダイレクト後のコールバック処理。 */
-  completeLogin(code: string): Promise<Result<AuthenticatedUser, AuthError>>;
+  currentUser(): Promise<Result<AuthenticatedUser | null, AuthError>>;
+  /**
+   * 認可を始める。リダイレクト方式では制御が戻らないため、戻り値を持たない。
+   * 認可後の処理はサーバ側で完結し、ブラウザはトップに戻ってくる。
+   */
+  beginLogin(): void;
   logout(): Promise<void>;
 }
 

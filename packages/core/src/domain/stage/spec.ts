@@ -10,6 +10,7 @@ import type { AbilityCommand, AbilityKind } from '../ability/types.ts';
 import type { FactKey, TimelineState, WorldState } from '../timeline/types.ts';
 import type { DifficultyLevel } from './difficulty.ts';
 import type { Goal } from './goal.ts';
+import type { GuideStep } from './guide.ts';
 
 export type StageId = string;
 
@@ -47,6 +48,11 @@ export interface StageSpec {
   readonly causalLoadLimit?: number;
   /** 詰まったときに段階的に開示するヒント。 */
   readonly hints?: readonly string[];
+  /**
+   * 手引き。条件を満たすごとに次の段へ進み、常に「次にすること」が画面に出る。
+   * 初めて触る章ほど厚くし、慣れた章では省いてよい。
+   */
+  readonly guide?: readonly GuideStep[];
 
   /**
    * 事実キーの表示名。Presentation 層だけが使う。
