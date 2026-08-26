@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "reflog",
+  "compatibility_date": "2026-08-01",
+
+  // 静的アセットだけを配信する Worker。サーバ側のコードはまだ無い。
+  // ゲーム本体はブラウザだけで完結するので、これで足りる。
+  //
+  // Phase 3 でアカウント機能（GitHub OAuth・進捗同期）を足すときは、
+  // ここに "main" と D1 バインディングを追加して、同じ Worker に API を同居させる。
+  "assets": {
+    "directory": "./packages/web/dist",
+    // 画面遷移を URL で持つようになっても 404 にならないようにしておく
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
