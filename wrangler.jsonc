@@ -14,6 +14,11 @@
     "not_found_handling": "single-page-application"
   },
 
+  // 既定値に任せると警告が出るうえ、将来 既定が変わったときに挙動が変わる。
+  // workers.dev のサブドメインで公開し、ブランチごとのプレビュー URL も有効にする。
+  "workers_dev": true,
+  "preview_urls": true,
+
   "observability": {
     "enabled": true
   }

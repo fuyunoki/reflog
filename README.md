@@ -3,9 +3,12 @@
 GitHub アカウントを素材に取り込み、**タイムライン（コミットグラフ）を操作して世界を修正する**体験型 Web ゲーム。
 プレイヤーが行使する能力は git のコマンド体系そのもので、遊んでいるうちに git の内部モデルが身につく。
 
+**遊ぶ: https://reflog.syu-cream2670.workers.dev**
+
 - 構想: [docs/concept.md](docs/concept.md)
 - アーキテクチャ: [docs/architecture.md](docs/architecture.md)
 - 進行設計（物語・無限性・難易度・アカウント）: [docs/progression.md](docs/progression.md)
+- デプロイ手順: [docs/deploy.md](docs/deploy.md)
 - デプロイとアカウント連携: [docs/deployment.md](docs/deployment.md)
 - UI モック（実際に第 1 章が遊べる）: [docs/mock/stage-ui.html](docs/mock/stage-ui.html)
 
