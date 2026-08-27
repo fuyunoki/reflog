@@ -213,36 +213,44 @@ const onBranch = (): void => {
       </div>
 
       <div class="meters">
-        <div class="meter">
-          <span class="label">手数</span>
-          <span class="value" :class="{ tight: movesTight }">{{ moveText }}</span>
-        </div>
-        <div class="meter">
-          <span class="label">因果負荷</span>
-          <span class="value" :class="{ tight: loadTight }">{{ loadText }}</span>
-        </div>
-
-        <div class="mode-switch" role="group" aria-label="操作方法">
-          <button
-            type="button"
-            :class="{ active: store.inputMode === 'panel' }"
-            :aria-pressed="store.inputMode === 'panel'"
-            @click="store.setMode('panel')"
-          >
-            パネル
-          </button>
-          <button
-            type="button"
-            :class="{ active: store.inputMode === 'console' }"
-            :aria-pressed="store.inputMode === 'console'"
-            @click="store.setMode('console')"
-          >
-            コンソール
-          </button>
+        <div class="gauges">
+          <div class="meter">
+            <span class="label">手数</span>
+            <span class="value" :class="{ tight: movesTight }">{{ moveText }}</span>
+          </div>
+          <div class="meter">
+            <span class="label">因果負荷</span>
+            <span class="value" :class="{ tight: loadTight }">{{ loadText }}</span>
+          </div>
         </div>
 
-        <button class="btn" type="button" @click="store.restart()">やり直す</button>
-        <button class="btn" type="button" @click="emit('exit')">戻る</button>
+        <!--
+          操作方法の切り替えと退出はひとかたまりにする。
+          ばらばらに折り返すと、狭い画面で「戻る」だけが行落ちして読みづらくなる。
+        -->
+        <div class="controls">
+          <div class="mode-switch" role="group" aria-label="操作方法">
+            <button
+              type="button"
+              :class="{ active: store.inputMode === 'panel' }"
+              :aria-pressed="store.inputMode === 'panel'"
+              @click="store.setMode('panel')"
+            >
+              パネル
+            </button>
+            <button
+              type="button"
+              :class="{ active: store.inputMode === 'console' }"
+              :aria-pressed="store.inputMode === 'console'"
+              @click="store.setMode('console')"
+            >
+              コンソール
+            </button>
+          </div>
+
+          <button class="btn" type="button" @click="store.restart()">やり直す</button>
+          <button class="btn" type="button" @click="emit('exit')">戻る</button>
+        </div>
       </div>
     </header>
 
@@ -468,6 +476,20 @@ const onBranch = (): void => {
   flex-wrap: wrap;
 }
 
+.gauges {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* 折り返すときも、この 3 つは必ず一緒に動く */
+.controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .meter {
   display: flex;
   align-items: baseline;
@@ -647,11 +669,33 @@ const onBranch = (): void => {
     justify-content: space-between;
     gap: 10px;
   }
+  .controls {
+    margin-left: auto;
+  }
   .title {
     font-size: 18px;
   }
   .col-left {
     height: 58dvh;
+  }
+}
+
+/* 横に 5 つ並べきれない幅では、計器と操作を上下に分ける */
+@media (max-width: 460px) {
+  .meters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .gauges {
+    justify-content: space-between;
+  }
+  .controls {
+    justify-content: space-between;
+    margin-left: 0;
+  }
+  .controls .btn {
+    flex: 1;
   }
 }
 
