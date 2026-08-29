@@ -12,12 +12,14 @@ import { computed, shallowRef, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type {
   AbilityCommand,
+  AbilityKind,
   BranchName,
   CommitId,
   ConflictResolution,
   DomainError,
   FactKey,
   MergeAnalysis,
+  CommitOffer,
   StageSession,
   StageSpec,
 } from '@reflog/core';
@@ -26,16 +28,24 @@ import {
   parseCommand,
   resolveGuide,
   playAbility,
+  previewCherryPick,
   previewMerge,
+  previewRebase,
   resolveHead,
   startStage,
   undo as undoSession,
 } from '@reflog/core';
 import { errorMessage, factLabel, valueLabel } from '@/presentation/labels';
-import { parseErrorMessage, renderQuery } from '@/presentation/consoleOutput';
+import { parseErrorMessage, renderDiff, renderQuery } from '@/presentation/consoleOutput';
 
+/**
+ * 決断待ちの矛盾。
+ * merge でも cherry-pick でも起こりうるので、どちらから来たかを持たせる。
+ */
 export interface PendingConflict {
-  readonly from: BranchName;
+  readonly kind: 'merge' | 'cherry-pick' | 'rebase';
+  /** merge なら統合元の世界線、cherry-pick なら持ち込む時点。 */
+  readonly source: string;
   readonly analysis: MergeAnalysis;
 }
 
@@ -74,6 +84,9 @@ export const useSessionStore = defineStore('session', () => {
   const guideRead = ref(0);
   const lastError = shallowRef<DomainError | null>(null);
 
+  /** 直前に start へ渡された習得済み術式。やり直しで引き継ぐ。 */
+  let learnedAbilities: readonly AbilityKind[] = [];
+
   const inputMode = ref<InputMode>(readStoredMode());
   const consoleLines = ref<ConsoleLine[]>([]);
   const commandHistory = ref<string[]>([]);
@@ -81,6 +94,8 @@ export const useSessionStore = defineStore('session', () => {
 
   /** 解決待ちの矛盾と、プレイヤーが今のところ選んでいる決断。 */
   const pendingConflict = shallowRef<PendingConflict | null>(null);
+  /** 刻む出来事を選んでもらっている最中。候補が複数あるときだけ入る。 */
+  const pendingOffers = shallowRef<readonly CommitOffer[] | null>(null);
   const conflictChoices = ref<Record<FactKey, ConflictResolution>>({});
 
   const spec = computed<StageSpec | null>(() => session.value?.spec ?? null);
@@ -169,8 +184,9 @@ export const useSessionStore = defineStore('session', () => {
     notice.value = { text, tone };
   }
 
-  function start(next: StageSpec): void {
-    const result = startStage(next);
+  function start(next: StageSpec, learned: readonly AbilityKind[] = []): void {
+    learnedAbilities = learned;
+    const result = startStage(next, learned);
     if (!result.ok) {
       notify(errorMessage(result.error), 'error');
       return;
@@ -182,6 +198,7 @@ export const useSessionStore = defineStore('session', () => {
     notice.value = null;
     lastError.value = null;
     pendingConflict.value = null;
+    pendingOffers.value = null;
     conflictChoices.value = {};
     introOpen.value = next.intro.length > 0;
     outroOpen.value = false;
@@ -195,7 +212,7 @@ export const useSessionStore = defineStore('session', () => {
     if (!spec.value) return;
     const current = spec.value;
     const attempts = retries.value + 1;
-    start(current);
+    start(current, learnedAbilities);
     retries.value = attempts;
   }
 
@@ -261,7 +278,11 @@ export const useSessionStore = defineStore('session', () => {
 
     if (conflicts.length > 0) {
       if (strategy === 'ask') {
-        pendingConflict.value = { from, analysis: preview.value.analysis as MergeAnalysis };
+        pendingConflict.value = {
+          kind: 'merge',
+          source: from,
+          analysis: preview.value.analysis as MergeAnalysis,
+        };
         conflictChoices.value = {};
         return preview.value.analysis as MergeAnalysis;
       }
@@ -279,6 +300,135 @@ export const useSessionStore = defineStore('session', () => {
     return null;
   }
 
+  /**
+   * 別の世界線の出来事を 1 つだけ持ち込む。
+   * merge と同じく矛盾が起こりうるので、決断の扱いも共通にする。
+   */
+  function attemptCherryPick(
+    targetId: CommitId,
+    strategy: 'ask' | 'ours' | 'theirs' = 'ask',
+    options: { silent?: boolean } = {},
+  ): MergeAnalysis | null {
+    if (!session.value) return null;
+
+    const preview = previewCherryPick(session.value.timeline, targetId);
+    if (!preview.ok) {
+      lastError.value = preview.error;
+      if (!options.silent) notify(errorMessage(preview.error), 'error');
+      return null;
+    }
+
+    const conflicts = preview.value.conflicts;
+    if (conflicts.length > 0) {
+      if (strategy === 'ask') {
+        pendingConflict.value = {
+          kind: 'cherry-pick',
+          source: targetId,
+          analysis: preview.value,
+        };
+        conflictChoices.value = {};
+        return preview.value;
+      }
+      const resolutions: Record<FactKey, ConflictResolution> = {};
+      for (const conflict of conflicts) resolutions[conflict.key] = { type: strategy };
+      if (play({ kind: 'cherry-pick', targetId, resolutions }, options) && !options.silent) {
+        notify('別の世界線の出来事を持ち込んだ。');
+      }
+      return null;
+    }
+
+    if (play({ kind: 'cherry-pick', targetId }, options) && !options.silent) {
+      notify('別の世界線の出来事を持ち込んだ。');
+    }
+    return null;
+  }
+
+  /** 選ばれた出来事を実際に刻む。 */
+  function commitOffer(offer: CommitOffer, options: { silent?: boolean } = {}): void {
+    pendingOffers.value = null;
+    const command: AbilityCommand = {
+      kind: 'commit',
+      message: offer.message,
+      changes: offer.changes,
+      ...(offer.narrative === undefined ? {} : { narrative: offer.narrative }),
+    };
+    if (play(command, options) && !options.silent) notify('新たな出来事を刻んだ。');
+  }
+
+  /**
+   * 出来事を刻む。候補が複数あれば、どれを起こすか選んでもらう。
+   * 候補はステージ側が用意する（世界に対して何を起こせるかは物語が決めるため）。
+   */
+  function attemptCommit(
+    offerId?: string,
+    options: { silent?: boolean } = {},
+  ): readonly CommitOffer[] | null {
+    const offers = spec.value?.offers ?? [];
+    if (offers.length === 0) {
+      if (!options.silent) notify('いま刻める出来事はない。', 'error');
+      return null;
+    }
+
+    const chosen = offerId
+      ? offers.find((offer) => offer.id === offerId)
+      : offers.length === 1
+        ? offers[0]
+        : undefined;
+
+    if (!chosen) {
+      if (offerId && !options.silent) notify('その出来事は用意されていない。', 'error');
+      if (offerId) return null;
+      pendingOffers.value = offers;
+      return offers;
+    }
+
+    commitOffer(chosen, options);
+    return null;
+  }
+
+  function cancelOffers(): void {
+    pendingOffers.value = null;
+  }
+
+  /**
+   * いまの世界線を、別の世界線の上に並べ直す。
+   * 矛盾の扱いは merge と同じだが、ours / theirs の向きが逆になる点に注意。
+   */
+  function attemptRebase(
+    onto: BranchName,
+    strategy: 'ask' | 'ours' | 'theirs' = 'ask',
+    options: { silent?: boolean } = {},
+  ): MergeAnalysis | null {
+    if (!session.value) return null;
+
+    const preview = previewRebase(session.value.timeline, onto);
+    if (!preview.ok) {
+      lastError.value = preview.error;
+      if (!options.silent) notify(errorMessage(preview.error), 'error');
+      return null;
+    }
+
+    const analysis = preview.value.analysis;
+    if (analysis && analysis.conflicts.length > 0) {
+      if (strategy === 'ask') {
+        pendingConflict.value = { kind: 'rebase', source: onto, analysis };
+        conflictChoices.value = {};
+        return analysis;
+      }
+      const resolutions: Record<FactKey, ConflictResolution> = {};
+      for (const conflict of analysis.conflicts) resolutions[conflict.key] = { type: strategy };
+      if (play({ kind: 'rebase', onto, resolutions }, options) && !options.silent) {
+        notify('出来事を並べ直した。');
+      }
+      return null;
+    }
+
+    if (play({ kind: 'rebase', onto }, options) && !options.silent) {
+      notify('出来事を並べ直した。元の並びは reflog から辿れる。');
+    }
+    return null;
+  }
+
   function decide(key: FactKey, resolution: ConflictResolution): void {
     conflictChoices.value = { ...conflictChoices.value, [key]: resolution };
   }
@@ -287,22 +437,43 @@ export const useSessionStore = defineStore('session', () => {
     const pending = pendingConflict.value;
     if (!pending || !allConflictsDecided.value) return;
 
-    const from = pending.from;
+    const { kind, source } = pending;
     const resolutions = conflictChoices.value;
     pendingConflict.value = null;
     conflictChoices.value = {};
 
     const silent = inputMode.value === 'console';
-    if (play({ kind: 'merge', from, resolutions }, { silent })) {
-      if (silent) emit('output', `Merge branch ${from}`);
-      else notify('二つの世界線が一つに束ねられた。');
+    const command: AbilityCommand =
+      kind === 'merge'
+        ? { kind: 'merge', from: source, resolutions }
+        : kind === 'rebase'
+          ? { kind: 'rebase', onto: source, resolutions }
+          : { kind: 'cherry-pick', targetId: source, resolutions };
+
+    if (play(command, { silent })) {
+      const line =
+        kind === 'merge'
+          ? `Merge branch ${source}`
+          : kind === 'rebase'
+            ? `Successfully rebased onto ${source}`
+            : `[cherry-pick] ${source}`;
+      if (silent) emit('output', line);
+      else {
+        notify(
+          kind === 'merge'
+            ? '二つの世界線が一つに束ねられた。'
+            : kind === 'rebase'
+              ? '出来事を並べ直した。元の並びは reflog から辿れる。'
+              : 'その出来事だけが、この世界に移された。',
+        );
+      }
     }
   }
 
   function cancelConflict(): void {
     pendingConflict.value = null;
     conflictChoices.value = {};
-    if (inputMode.value === 'console') emit('note', '統合を中止した。');
+    if (inputMode.value === 'console') emit('note', '決断を保留した。');
   }
 
   function undo(): void {
@@ -350,14 +521,32 @@ export const useSessionStore = defineStore('session', () => {
         const message = current.timeline.commits[command.targetId]?.message ?? '';
         return `HEAD is now at ${command.targetId} ${message}`;
       }
-      case 'commit':
-        return `[${command.message}]`;
+      case 'commit': {
+        const head = resolveHead(current.timeline);
+        const id = head.ok ? head.value : '';
+        const message = current.timeline.commits[id]?.message ?? command.message;
+        const branch =
+          current.timeline.head.type === 'branch' ? current.timeline.head.branch : 'detached';
+        return `[${branch} ${id}] ${message}`;
+      }
       case 'merge':
         return 'Merge made by the three-way strategy.';
+      case 'cherry-pick':
+        return `[cherry-pick] ${command.targetId}`;
+      case 'rebase':
+        return `Successfully rebased onto ${command.onto}`;
+      case 'tag':
+        return `Tagged '${command.name}'`;
+      case 'delete-tag':
+        return `Deleted tag '${command.name}'`;
     }
   }
 
-  function reportConflicts(from: BranchName, analysis: MergeAnalysis): void {
+  function reportConflicts(
+    kind: 'merge' | 'cherry-pick' | 'rebase',
+    source: string,
+    analysis: MergeAnalysis,
+  ): void {
     const current = session.value;
     if (!current) return;
 
@@ -371,7 +560,9 @@ export const useSessionStore = defineStore('session', () => {
     }
     emit(
       'note',
-      `決断を選ぶか、git merge ${from} --ours / --theirs でまとめて決着できる。`,
+      kind === 'cherry-pick'
+        ? '表示された選択肢から、どちらの現実を採るか決める。'
+        : `決断を選ぶか、git ${kind} ${source} --ours / --theirs でまとめて決着できる。`,
     );
   }
 
@@ -400,10 +591,50 @@ export const useSessionStore = defineStore('session', () => {
       return;
     }
 
+    if (action.kind === 'diff') {
+      // 引数の数で「何と何を比べるか」を決める。
+      // 2 つ → そのまま / 1 つ → 現在地と比べる / 0 個 → 選んでいる時点とその親
+      const head = headCommit.value;
+      let from = action.from;
+      let to = action.to;
+      if (from && !to) {
+        to = from;
+        from = head ?? undefined;
+      }
+      if (!from && !to) {
+        const target = selected.value ?? head;
+        const parent = target
+          ? session.value.timeline.commits[target]?.parents[0]
+          : undefined;
+        from = parent ?? target ?? undefined;
+        to = target ?? undefined;
+      }
+      if (!from || !to) {
+        emit('error', 'diff: 比べる時点が決まらない。git diff <a> <b> のように指定する。');
+        return;
+      }
+      emit('output', renderDiff(session.value, from, to));
+      return;
+    }
+
+    if (action.kind === 'rebase') {
+      const analysis = attemptRebase(action.onto, action.strategy, { silent: true });
+      if (analysis) {
+        reportConflicts('rebase', action.onto, analysis);
+        return;
+      }
+      if (lastError.value) {
+        emit('error', errorMessage(lastError.value));
+        return;
+      }
+      emit('output', `Successfully rebased onto ${action.onto}`);
+      return;
+    }
+
     if (action.kind === 'merge') {
       const analysis = attemptMerge(action.from, action.strategy, { silent: true });
       if (analysis) {
-        reportConflicts(action.from, analysis);
+        reportConflicts('merge', action.from, analysis);
         return;
       }
       if (lastError.value) {
@@ -411,6 +642,37 @@ export const useSessionStore = defineStore('session', () => {
         return;
       }
       emit('output', 'Merge made by the three-way strategy.');
+      return;
+    }
+
+    if (action.kind === 'commit') {
+      const offers = attemptCommit(action.offerId, { silent: true });
+      if (offers) {
+        emit('output', '刻める出来事が複数ある。番号ではなく名前で指定する:');
+        for (const offer of offers) emit('output', `  ${offer.id}  ${offer.message}`);
+        emit('note', 'git commit <名前> のように指定する。');
+        return;
+      }
+      if (lastError.value) {
+        emit('error', errorMessage(lastError.value));
+        return;
+      }
+      emit('output', describeResult({ kind: 'commit', message: '', changes: {} }));
+      return;
+    }
+
+    if (action.command.kind === 'cherry-pick') {
+      const targetId = action.command.targetId;
+      const analysis = attemptCherryPick(targetId, 'ask', { silent: true });
+      if (analysis) {
+        reportConflicts('cherry-pick', targetId, analysis);
+        return;
+      }
+      if (lastError.value) {
+        emit('error', errorMessage(lastError.value));
+        return;
+      }
+      emit('output', `[cherry-pick] ${targetId}`);
       return;
     }
 
@@ -432,6 +694,7 @@ export const useSessionStore = defineStore('session', () => {
     introOpen,
     outroOpen,
     pendingConflict,
+    pendingOffers,
     conflictChoices,
     hintsRevealed,
     retries,
@@ -460,6 +723,11 @@ export const useSessionStore = defineStore('session', () => {
     checkout,
     revertSelected,
     attemptMerge,
+    attemptCherryPick,
+    attemptRebase,
+    attemptCommit,
+    commitOffer,
+    cancelOffers,
     decide,
     commitConflict,
     cancelConflict,

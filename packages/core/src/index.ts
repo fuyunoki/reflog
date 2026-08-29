@@ -23,6 +23,10 @@ export * from './domain/stage/guide.ts';
 export * from './domain/stage/difficulty.ts';
 export * from './domain/stage/generator.ts';
 
+// lexicon
+export * from './domain/lexicon/types.ts';
+export * from './domain/lexicon/annotate.ts';
+
 // campaign
 export * from './domain/campaign/types.ts';
 export * from './domain/campaign/condition.ts';

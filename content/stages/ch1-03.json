@@ -1,0 +1,154 @@
+{
+  "id": "ch1-03",
+  "title": "抱き合わせの記録",
+  "chapter": {
+    "number": 1,
+    "title": "消したものの行方",
+    "kind": "story"
+  },
+  "briefing": [
+    {
+      "label": "年月",
+      "value": "1969年8月"
+    },
+    {
+      "label": "場所",
+      "value": "苫江"
+    },
+    {
+      "label": "分類",
+      "value": "市街焼失・機材回収"
+    },
+    {
+      "label": "関係者",
+      "value": "シンドバッド（回収）"
+    }
+  ],
+  "intro": [
+    "1969年8月、苫江。ここが位相計の始まりです。",
+    "回収された世界線には、二つの出来事が並んでいます。ひとつは位相計の完成。もうひとつは、市街の焼失。",
+    "観測局が欲しいのは前者だけです。",
+    "——世界線ごと取り込めば、後者もついてきます。抜き出してください。"
+  ],
+  "outro": [
+    "ひとつの出来事だけを抜き出して、こちらへ移しました。",
+    "向こうの世界線はそのまま残っています。あちらでは今も、街が燃えています。",
+    "何も持ち込まなければ、あの発明もありませんでした。そういう取引だったんです。",
+    "……灰崎の観測所も、白鷺の装置も、元を辿ればここに行き着きます。我々が持ち帰ったものが、後の年で何をしたのか。",
+    "そろそろ、考えたほうがいいのかもしれませんね。"
+  ],
+  "initialFacts": {
+    "device.state": "prototype",
+    "city.state": "intact"
+  },
+  "rootMessage": "観測開始: 1969年8月1日",
+  "rootNarrative": "位相計はまだ試作のまま。市街は無事だ。",
+  "setup": [
+    {
+      "kind": "branch",
+      "name": "salvage",
+      "at": "c1"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "salvage"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "位相計が完成する",
+      "changes": {
+        "device.state": "complete"
+      },
+      "narrative": "回収された記録。その世界線では、位相計は完成し、最初の観測に成功していた。"
+    },
+    {
+      "kind": "commit",
+      "message": "市街が焼失する",
+      "changes": {
+        "city.state": "burned"
+      },
+      "narrative": "同じ世界線の、その三日後。出火の原因は観測装置の過負荷だった。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "device-complete",
+      "label": "位相計が完成している",
+      "predicate": {
+        "type": "factEquals",
+        "key": "device.state",
+        "value": "complete"
+      }
+    },
+    {
+      "id": "city-intact",
+      "label": "市街が無事である",
+      "predicate": {
+        "type": "factEquals",
+        "key": "city.state",
+        "value": "intact"
+      }
+    },
+    {
+      "id": "salvage-kept",
+      "label": "回収した世界線を残したまま達成した",
+      "optional": true,
+      "predicate": {
+        "type": "branchExists",
+        "branch": "salvage"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "merge",
+    "cherry-pick"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 5,
+  "hints": [
+    "salvage には二つの出来事がある。両方が要るわけではない。",
+    "MERGE は世界線をまるごと取り込む。欲しい出来事だけを選ぶ手が別にある。",
+    "位相計が完成した時点を選び、CHERRY-PICK で持ち込む。"
+  ],
+  "guide": [
+    {
+      "text": "下の salvage に、出来事が二つ並んでいる。どちらもクリックして読んでみる。",
+      "note": "欲しいのは位相計の完成だけだ。市街の焼失は要らない。",
+      "until": {
+        "type": "commitSelected"
+      }
+    },
+    {
+      "text": "MERGE で取り込むと、二つとも入ってくる。欲しい方の時点を選んで CHERRY-PICK する。",
+      "note": "CHERRY-PICK は出来事をひとつだけ移す。履歴は繋がらないので、向こうの世界線はそのまま残る。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "device.state": "位相計",
+    "city.state": "苫江市街"
+  },
+  "valueLabels": {
+    "prototype": "試作段階",
+    "complete": "完成",
+    "intact": "無事",
+    "burned": "焼失"
+  },
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch1-02"
+  }
+}

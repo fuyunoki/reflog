@@ -5,6 +5,7 @@
  * ただしコミットメッセージと事実は世界観の言葉で出す。
  */
 import type {
+  CommitId,
   ParseError,
   QueryKind,
   StageSession,
@@ -18,6 +19,7 @@ import {
   listCommits,
   recoverableCommits,
   resolveHead,
+  worldStateAt,
 } from '@reflog/core';
 import { factLabel, valueLabel } from './labels';
 
@@ -107,6 +109,11 @@ const renderBranches = (state: TimelineState): string[] =>
       return `${current ? '*' : ' '} ${pad(name, 18)} ${tip}`;
     });
 
+const renderTags = (state: TimelineState): string[] =>
+  Object.entries(state.tags)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, target]) => `  ${pad(name, 18)} ${target}`);
+
 const renderReflog = (state: TimelineState): string[] => {
   const lost = new Set(recoverableCommits(state));
   const lines = [...state.reflog]
@@ -137,6 +144,38 @@ const renderHelp = (spec: StageSpec): string[] => {
   return lines;
 };
 
+/**
+ * 二つの時点の差。git diff に寄せて、消えた側を - 、増えた側を + で出す。
+ */
+export const renderDiff = (
+  session: StageSession,
+  fromId: CommitId,
+  toId: CommitId,
+): string[] => {
+  const { timeline, spec } = session;
+  const from = worldStateAt(timeline, fromId);
+  const to = worldStateAt(timeline, toId);
+  if (!from.ok) return [`diff: ${fromId} は観測できない`];
+  if (!to.ok) return [`diff: ${toId} は観測できない`];
+
+  const lines = [`--- ${fromId}`, `+++ ${toId}`];
+  const keys = [...new Set([...Object.keys(from.value), ...Object.keys(to.value)])].sort();
+  let changed = 0;
+
+  for (const key of keys) {
+    const before = from.value[key];
+    const after = to.value[key];
+    if (before === after) continue;
+    changed += 1;
+    const name = factLabel(spec, key);
+    if (before !== undefined) lines.push(`- ${name} = ${valueLabel(spec, before)}`);
+    if (after !== undefined) lines.push(`+ ${name} = ${valueLabel(spec, after)}`);
+  }
+
+  if (changed === 0) lines.push('(差はない)');
+  return lines;
+};
+
 export const renderQuery = (query: QueryKind, session: StageSession): string[] => {
   switch (query) {
     case 'log':
@@ -145,6 +184,8 @@ export const renderQuery = (query: QueryKind, session: StageSession): string[] =
       return renderStatus(session);
     case 'branch':
       return renderBranches(session.timeline);
+    case 'tag':
+      return renderTags(session.timeline);
     case 'reflog':
       return renderReflog(session.timeline);
     case 'help':

@@ -1,0 +1,193 @@
+{
+  "id": "ch0-08",
+  "title": "二つの計測",
+  "chapter": {
+    "number": 2,
+    "title": "訓練 II — よく使う手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "08"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "MERGE — 矛盾ごとに別の側を採る"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-03"
+  },
+  "intro": [
+    "MERGE の応用です。食い違いが二箇所あるとき、それぞれ別の側を選びます。",
+    "第一班と第二班が、同じ日に別々の計測をしました。二つの数値が、どちらも食い違っています。",
+    "どちらの班が正しいかではありません。どの計器が信用できるかです。時点を開いて、校正の記録を読んでください。",
+    "それと、決着させて終わりではありませんよ。決まった数値に見合う処置まで取ってください。"
+  ],
+  "outro": [
+    "まとめて片側に寄せれば早いですね。でも、正しいものが片側に揃っているとは限りません。",
+    "食い違いは一つずつ見る。そういう仕事です。",
+    "——数値を確定させた人には、その数値に従う義務がついてきます。危険域と書いたのに警戒を出さないなら、確定させた意味がありません。"
+  ],
+  "initialFacts": {
+    "water.level": "unmeasured",
+    "pressure.value": "unmeasured",
+    "alert.state": "none"
+  },
+  "rootMessage": "訓練記録 08: 観測開始",
+  "rootNarrative": "どちらの数値も、まだ記録されていない。警戒も出ていない。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "第一班が計測する",
+      "changes": {
+        "water.level": "rising",
+        "pressure.value": "normal"
+      },
+      "narrative": "第一班の記録。水位は上昇、圧力は正常。水位計は前日に校正されている。"
+    },
+    {
+      "kind": "branch",
+      "name": "second",
+      "at": "c1"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "second"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "第二班が計測する",
+      "changes": {
+        "water.level": "stable",
+        "pressure.value": "critical"
+      },
+      "narrative": "第二班の記録。水位は横ばい、圧力は危険域。圧力計は前日に校正されている。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "water-from-first",
+      "label": "水位は第一班の「上昇」で決着している",
+      "predicate": {
+        "type": "factEquals",
+        "key": "water.level",
+        "value": "rising"
+      }
+    },
+    {
+      "id": "pressure-from-second",
+      "label": "圧力は第二班の「危険域」で決着している",
+      "predicate": {
+        "type": "factEquals",
+        "key": "pressure.value",
+        "value": "critical"
+      }
+    },
+    {
+      "id": "alert-raised",
+      "label": "決着した数値に見合う処置が取られている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "alert.state",
+        "value": "raised"
+      }
+    },
+    {
+      "id": "second-kept",
+      "label": "第二班の記録を捨てていない",
+      "optional": true,
+      "predicate": {
+        "type": "branchExists",
+        "branch": "second"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "merge",
+    "commit"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 5,
+  "hints": [
+    "食い違いが二箇所ある。まとめて片側に寄せると、片方が誤った値になる。",
+    "前日に校正された計器のほうが正確だ。どちらの記録に何が書いてあるかを読む。",
+    "水位は Ours（第一班）、圧力は Theirs（第二班）を選ぶ。",
+    "決着したら、圧力の値に見合う出来事を COMMIT で刻む。"
+  ],
+  "guide": [
+    {
+      "text": "MERGE を試すと、食い違いが二箇所あることが分かる。",
+      "note": "コンソールの --ours や --theirs は、二箇所とも同じ側に寄せてしまう。今回は使えない。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "二箇所それぞれに採る側を選ぶ。両方選ばないと確定できない。",
+      "note": "校正したばかりの計器のほうが正確だ、という判断になる。どちらがそれかは時点の記録に書いてある。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "merge"
+      }
+    },
+    {
+      "text": "決着した数値を見て、取るべき処置を COMMIT で刻む。候補は二つある。",
+      "note": "危険域と確定させておいて何もしないなら、統合した意味がない。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "water.level": "水位",
+    "pressure.value": "圧力",
+    "alert.state": "警戒"
+  },
+  "valueLabels": {
+    "unmeasured": "未計測",
+    "rising": "上昇",
+    "stable": "横ばい",
+    "normal": "正常",
+    "critical": "危険域",
+    "none": "未発令",
+    "raised": "発令中",
+    "cleared": "解除"
+  },
+  "order": 2,
+  "offers": [
+    {
+      "id": "raise-alert",
+      "message": "警戒を発令する",
+      "changes": {
+        "alert.state": "raised"
+      },
+      "narrative": "確定した圧力値にもとづき、区域へ警戒を発令した。避難路が開かれる。"
+    },
+    {
+      "id": "stand-down",
+      "message": "警戒を解除して平常に戻す",
+      "changes": {
+        "alert.state": "cleared"
+      },
+      "narrative": "平常運転に戻す旨を通達した。危険域の記録が残ったまま、誰も動かないことになる。"
+    }
+  ]
+}

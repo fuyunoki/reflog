@@ -12,6 +12,10 @@ import {
   createBranch,
   deleteBranch,
   merge,
+  cherryPick,
+  createTag,
+  deleteTag,
+  rebase,
   reset,
   revert,
 } from '../timeline/operations.ts';
@@ -46,5 +50,19 @@ export const executeAbility = (
       return revert(state, command.targetId);
     case 'reset':
       return reset(state, command.targetId);
+    case 'cherry-pick':
+      return cherryPick(state, {
+        targetId: command.targetId,
+        resolutions: command.resolutions,
+      });
+    case 'tag':
+      return createTag(state, command.name, command.at);
+    case 'delete-tag':
+      return deleteTag(state, command.name);
+    case 'rebase':
+      return rebase(state, {
+        onto: command.onto,
+        ...(command.resolutions ? { resolutions: command.resolutions } : {}),
+      });
   }
 };

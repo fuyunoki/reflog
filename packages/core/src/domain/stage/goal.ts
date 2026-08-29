@@ -20,6 +20,8 @@ export type GoalPredicate =
   | { readonly type: 'factAbsent'; readonly key: FactKey }
   /** 指定のブランチが存在すること。 */
   | { readonly type: 'branchExists'; readonly branch: BranchName }
+  /** 指定の印が付いていること。at を指定すれば、その時点に付いていること。 */
+  | { readonly type: 'tagExists'; readonly tag: string; readonly at?: CommitId }
   /** HEAD が指定のブランチ上にあること。 */
   | { readonly type: 'headOn'; readonly branch: BranchName }
   /** 指定のコミットが、どこかのブランチから到達可能なままであること（歴史の保存）。 */
@@ -60,6 +62,11 @@ export const evaluatePredicate = (
     }
     case 'branchExists':
       return predicate.branch in state.branches;
+    case 'tagExists': {
+      const target = state.tags[predicate.tag];
+      if (target === undefined) return false;
+      return predicate.at === undefined || target === predicate.at;
+    }
     case 'headOn':
       return state.head.type === 'branch' && state.head.branch === predicate.branch;
     case 'historyPreserved':

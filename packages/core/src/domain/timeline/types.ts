@@ -77,6 +77,11 @@ export interface ReflogEntry {
 export interface TimelineState {
   readonly commits: Readonly<Record<CommitId, Commit>>;
   readonly branches: Readonly<Record<BranchName, CommitId>>;
+  /**
+   * 時点に付けた名前。
+   * ブランチと違って動かない。「ここが基準だ」と刻んでおくための印。
+   */
+  readonly tags: Readonly<Record<string, CommitId>>;
   readonly head: Head;
   readonly reflog: readonly ReflogEntry[];
   /**

@@ -5,7 +5,7 @@
  * テストできる形に保っておきたい。
  */
 import type { BranchName, Commit, CommitId, TimelineState } from '@reflog/core';
-import { branchesAt, listCommits, resolveHead } from '@reflog/core';
+import { branchesAt, listCommits, resolveHead, tagsAt } from '@reflog/core';
 
 export interface GraphNode {
   readonly id: CommitId;
@@ -17,6 +17,8 @@ export interface GraphNode {
   /** どのブランチからも辿れない＝消えた世界線。 */
   readonly isOrphan: boolean;
   readonly refs: readonly BranchName[];
+  /** その時点に付いた、動かない印。 */
+  readonly tags: readonly string[];
   /**
    * ラベルを置く段。同じレーンで隣り合うノード同士を互い違いにして、
    * 長いメッセージが横に繋がって読めなくなるのを防ぐ。
@@ -134,6 +136,7 @@ export const layoutTimeline = (
       isHead: commit.id === headId,
       isOrphan: !reachable.has(commit.id),
       refs: branchesAt(state, commit.id),
+      tags: tagsAt(state, commit.id),
       labelRow: (seen % 2) as 0 | 1,
     };
   });

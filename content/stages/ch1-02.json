@@ -1,0 +1,162 @@
+{
+  "id": "ch1-02",
+  "title": "改竄された観測記録",
+  "chapter": {
+    "number": 1,
+    "title": "消したものの行方",
+    "kind": "story"
+  },
+  "briefing": [
+    {
+      "label": "年月",
+      "value": "1981年3月"
+    },
+    {
+      "label": "場所",
+      "value": "灰崎観測所"
+    },
+    {
+      "label": "分類",
+      "value": "記録の改竄・地区被災"
+    },
+    {
+      "label": "関係者",
+      "value": "改竄者不明"
+    }
+  ],
+  "intro": [
+    "1981年3月、灰崎観測所。位相計を積んだ観測所です。",
+    "ひとつの記録が書き換えられました。そこから先の判断は、すべて誤った前提の上に積み上がっています。",
+    "退避計画は撤回され、地区は被災しました。",
+    "誰が書き換えたのかは残っていません。局の中の人間ではないか、という声もあります。口には出しませんが。",
+    "——今回は、打ち消す以外の手も渡してあります。使うかどうかは、あなたが決めてください。"
+  ],
+  "outro": [
+    "三つを打ち消したなら、記録には打ち消した跡が残っています。誰がいつ何を誤ったかを、後から辿れます。",
+    "根こそぎ巻き戻したなら、そこには何もありません。誤りも、誤った人間も、最初からいなかったことになります。",
+    "どちらも世界は元に戻りました。同じではありませんけどね。",
+    "——書き換えた人間を消してしまうと、次に同じことをする人間も分からなくなります。それだけは覚えておいてください。"
+  ],
+  "initialFacts": {
+    "record.integrity": "intact",
+    "policy.evacuation": "planned",
+    "district.state": "safe"
+  },
+  "rootMessage": "観測開始: 1981年3月1日",
+  "rootNarrative": "記録はまだ、書き換えられていない。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "観測記録が書き換えられる",
+      "changes": {
+        "record.integrity": "falsified"
+      },
+      "narrative": "数値がひとつ、書き換えられていた。誰の筆跡かは分からない。"
+    },
+    {
+      "kind": "commit",
+      "message": "退避計画が撤回される",
+      "changes": {
+        "policy.evacuation": "cancelled"
+      },
+      "narrative": "改竄された記録は「危険なし」と告げていた。計画は不要と判断された。"
+    },
+    {
+      "kind": "commit",
+      "message": "地区が被災する",
+      "changes": {
+        "district.state": "damaged"
+      },
+      "narrative": "退避は行われなかった。誰も、逃げろとは言わなかった。"
+    }
+  ],
+  "goals": [
+    {
+      "id": "record-intact",
+      "label": "観測記録が正しい状態にある",
+      "predicate": {
+        "type": "factEquals",
+        "key": "record.integrity",
+        "value": "intact"
+      }
+    },
+    {
+      "id": "evacuation-planned",
+      "label": "退避計画が生きている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "policy.evacuation",
+        "value": "planned"
+      }
+    },
+    {
+      "id": "district-safe",
+      "label": "地区が無事である",
+      "predicate": {
+        "type": "factEquals",
+        "key": "district.state",
+        "value": "safe"
+      }
+    },
+    {
+      "id": "history-preserved",
+      "label": "改竄が起きたという記録を残したまま達成した",
+      "optional": true,
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c2"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "revert",
+    "reset"
+  ],
+  "moveLimit": 4,
+  "causalLoadLimit": 6,
+  "hints": [
+    "三つの出来事は、それぞれ別の事実を書き換えている。ひとつずつ打ち消せる。",
+    "RESET なら一手で済む。ただし、消えるのは誤りだけではない。",
+    "REVERT で c4・c3・c2 を順に打ち消せば、記録を残したまま世界は戻る。"
+  ],
+  "guide": [
+    {
+      "text": "誤りが三つ積み重なっている。いちばん上から順に打ち消していけば、世界は元に戻る。",
+      "note": "REVERT は 1 回につき因果負荷を 2 使う。三回で上限ちょうどだ。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "RESET という手もある。一手で根元まで戻せるが、その先に起きたことは記録ごと消える。",
+      "note": "どちらでもクリアはできる。ただし「記録を残したまま」の任意条件は RESET では満たせない。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "どちらの手で戻すかは、あなたが決める。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "record.integrity": "観測記録",
+    "policy.evacuation": "退避計画",
+    "district.state": "灰崎地区"
+  },
+  "valueLabels": {
+    "intact": "正常",
+    "falsified": "改竄済み",
+    "planned": "策定済み",
+    "cancelled": "撤回",
+    "safe": "無事",
+    "damaged": "被災"
+  },
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch1-01"
+  }
+}

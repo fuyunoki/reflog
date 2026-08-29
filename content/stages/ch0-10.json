@@ -1,0 +1,150 @@
+{
+  "id": "ch0-10",
+  "title": "動かない印",
+  "chapter": {
+    "number": 2,
+    "title": "訓練 II — よく使う手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "10"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "TAG — 時点に動かない印を付ける"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-06"
+  },
+  "order": 5,
+  "teaches": "tag",
+  "intro": [
+    "追加の術式です。TAG —— 時点に、動かない印を付ける力です。",
+    "BRANCH と似ていますが、性質が逆です。世界線は新しい出来事を刻むたびに先へ進みます。印は動きません。",
+    "ジュダルが baseline という印を残しているんですが、位置が間違っています。工事が前提にしているのは別の時点です。",
+    "印を打ち直してから、測量を確定させてください。同じ名前の印は二つ置けませんので。"
+  ],
+  "outro": [
+    "世界線は「いまどこを見ているか」、印は「あのときどこだったか」。",
+    "どちらも時点を指しますが、片方は動いて、片方は動きません。",
+    "——印の打ち直しは、消してから付けます。上書きはできません。名前は一度に一つしか指せませんから。"
+  ],
+  "initialFacts": {
+    "survey.state": "draft",
+    "monument.state": "unmarked"
+  },
+  "rootMessage": "訓練記録 10: 観測開始",
+  "rootNarrative": "まだ何も測っていない。図面も白紙のままだ。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "仮測量が行われる",
+      "changes": {
+        "survey.state": "provisional"
+      },
+      "narrative": "仮の測量値が出た。確定ではないが、現場の工事はすべてこの値を前提に始まっている。基準はここだ。"
+    },
+    {
+      "kind": "tag",
+      "name": "baseline",
+      "at": "c1"
+    }
+  ],
+  "offers": [
+    {
+      "id": "finalize",
+      "message": "測量が確定する",
+      "changes": {
+        "survey.state": "final",
+        "monument.state": "marked"
+      },
+      "narrative": "測量値が確定し、基準杭が打たれた。以後の工事はこの値を前提に進む。"
+    }
+  ],
+  "goals": [
+    {
+      "id": "survey-final",
+      "label": "測量が確定している",
+      "predicate": {
+        "type": "factEquals",
+        "key": "survey.state",
+        "value": "final"
+      }
+    },
+    {
+      "id": "monument-marked",
+      "label": "基準杭が打たれている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "monument.state",
+        "value": "marked"
+      }
+    },
+    {
+      "id": "baseline-moved",
+      "label": "baseline の印が、工事の前提になった仮測量の時点に付いている",
+      "predicate": {
+        "type": "tagExists",
+        "tag": "baseline",
+        "at": "c2"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "commit",
+    "tag",
+    "delete-tag"
+  ],
+  "moveLimit": 4,
+  "causalLoadLimit": 3,
+  "hints": [
+    "印は付け外しとも負荷を使わない。何度でもやり直していい。",
+    "いまの baseline は観測開始の時点（c1）に付いている。工事が前提にしたのは仮測量（c2）だ。",
+    "同じ名前の印は二つ置けない。先に DELETE-TAG で外してから付け直す。",
+    "コンソールなら git tag -d baseline のあと git tag baseline c2、最後に測量を確定させる COMMIT。"
+  ],
+  "guide": [
+    {
+      "text": "baseline という印が根元（c1）に付いている。だが工事が前提にしているのは仮測量の時点だ。",
+      "note": "印は動かない。動かないからこそ、間違った場所に打つと後から全員が間違える。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "まず DELETE-TAG で古い印を外し、TAG で正しい時点に打ち直す。",
+      "note": "同じ名前の印は二つ置けないので、上書きではなく外してから付ける。付け外しに負荷はかからない。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "tag"
+      }
+    },
+    {
+      "text": "最後に COMMIT で測量を確定させる。main は先へ進むが、印は打った時点に留まったままだ。",
+      "note": "図の上で、世界線の札が動いても印が動かないことを確かめてほしい。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "survey.state": "測量",
+    "monument.state": "基準杭"
+  },
+  "valueLabels": {
+    "draft": "白紙",
+    "provisional": "仮測量",
+    "final": "確定",
+    "unmarked": "未設置",
+    "marked": "設置済み"
+  }
+}

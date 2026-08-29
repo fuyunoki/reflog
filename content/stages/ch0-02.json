@@ -2,24 +2,49 @@
   "id": "ch0-02",
   "title": "二本目の記録",
   "chapter": {
-    "number": 0,
-    "title": "観測局へようこそ"
+    "number": 1,
+    "title": "訓練 I — 日常の手",
+    "kind": "training"
   },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "02"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "MERGE — 分かれた記録を束ねる"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-12"
+  },
+  "order": 4,
+  "teaches": "merge",
   "intro": [
-    "歴史は一本ではない。観測局は、分かれてしまった別の記録も回収している。",
-    "今回はそれを扱う。別の世界線にしか無い出来事を、こちらへ持ってくる訓練だ。"
+    "次の術式は MERGE —— 分かれた記録を、こちらへ束ねて取り込む力です。",
+    "歴史は一本ではありません。観測局は、分かれてしまった記録も回収して並べて保管しています。",
+    "今回は三本ぶん、シンドバッドが回収してきました。必要なものを取り込んで、要らないものは取り込まないでください。",
+    "取り込むのは簡単ですが、取り消すのは高くつきます。刻む前に中身を読んでくださいね。"
   ],
   "outro": [
-    "二つの記録は、片方を捨てずに一つにできる。それが統合だ。",
-    "——ただし、同じ事柄について食い違う記録が残っていた場合は、そう簡単にはいかない。",
-    "それは現場で教える。"
+    "二つの記録は、片方を捨てずに一つにできます。それが統合です。",
+    "回収した世界線がそこにあるからといって、全部束ねればいいわけではありません。取り込んだものは、この世界の事実になりますから。",
+    "——ただ、同じ事柄について食い違う記録が残っていた場合は、そう簡単にはいきません。それは後で扱います。"
   ],
   "initialFacts": {
+    "record.state": "scattered",
     "device.state": "incomplete",
-    "record.state": "scattered"
+    "calib.state": "raw",
+    "shelter.state": "standing"
   },
   "rootMessage": "訓練記録の開始",
-  "rootNarrative": "装置は未完成で、記録も散らばったまま。ここから二つの道が分かれる。",
+  "rootNarrative": "装置は未完成、記録は散らばったまま。観測小屋はまだ建っている。",
   "setup": [
     {
       "kind": "commit",
@@ -32,7 +57,17 @@
     {
       "kind": "branch",
       "name": "observation",
-      "at": "c1"
+      "at": "c2"
+    },
+    {
+      "kind": "branch",
+      "name": "calibration",
+      "at": "c2"
+    },
+    {
+      "kind": "branch",
+      "name": "salvage",
+      "at": "c2"
     },
     {
       "kind": "checkout",
@@ -47,7 +82,37 @@
       "changes": {
         "device.state": "complete"
       },
-      "narrative": "回収されたもう一本の記録。こちらでは装置が完成していた。記録の整理は行われていない。"
+      "narrative": "回収された記録のひとつ。こちらでは装置が完成していた。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "calibration"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "装置が較正される",
+      "changes": {
+        "calib.state": "calibrated"
+      },
+      "narrative": "別班の記録。較正手順が確立され、観測値の補正係数が決まっている。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "salvage"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "観測小屋が取り壊される",
+      "changes": {
+        "shelter.state": "demolished"
+      },
+      "narrative": "見捨てられた世界線の記録。予算の都合で観測小屋が取り壊され、観測そのものが打ち切られている。"
     },
     {
       "kind": "checkout",
@@ -59,6 +124,15 @@
   ],
   "goals": [
     {
+      "id": "record-sorted",
+      "label": "観測記録が整理されている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "record.state",
+        "value": "sorted"
+      }
+    },
+    {
       "id": "device-complete",
       "label": "観測装置が完成している",
       "predicate": {
@@ -68,12 +142,21 @@
       }
     },
     {
-      "id": "record-sorted",
-      "label": "観測記録が整理されている",
+      "id": "calib-done",
+      "label": "装置が較正されている",
       "predicate": {
         "type": "factEquals",
-        "key": "record.state",
-        "value": "sorted"
+        "key": "calib.state",
+        "value": "calibrated"
+      }
+    },
+    {
+      "id": "shelter-standing",
+      "label": "観測小屋が建っている（取り壊された記録は取り込まない）",
+      "predicate": {
+        "type": "factEquals",
+        "key": "shelter.state",
+        "value": "standing"
       }
     },
     {
@@ -86,48 +169,57 @@
       }
     }
   ],
-  "guide": [
-    {
-      "text": "世界線が二本ある。上が今いる世界線 main、下が回収された observation。",
-      "note": "git ではこの枝分かれをブランチと呼ぶ。左の一覧からも切り替えられる。",
-      "until": {
-        "type": "acknowledged"
-      }
-    },
-    {
-      "text": "下の世界線にある時点をクリックしてみる。こちらには無い出来事が起きている。",
-      "until": {
-        "type": "commitSelected",
-        "commitId": "c3"
-      }
-    },
-    {
-      "text": "左の MERGE を押すと、その世界線の出来事をこちらへ取り込める。",
-      "note": "装置の完成と記録の整理、その両方が揃った。これが統合だ。",
-      "until": {
-        "type": "cleared"
-      }
-    }
-  ],
   "abilities": [
     "checkout",
     "merge",
     "revert"
   ],
-  "moveLimit": 4,
-  "causalLoadLimit": 8,
+  "moveLimit": 3,
+  "causalLoadLimit": 5,
   "hints": [
-    "observation の世界線を取り込めばよい。",
-    "MERGE を押して observation を選ぶ。"
+    "回収された世界線は三本。取り込むべきものは二本だ。",
+    "それぞれの時点をクリックして、何が起きた記録なのかを読む。",
+    "小屋の取り壊し（salvage）は取り込まない。取り込むと条件がひとつ崩れる。",
+    "MERGE で observation と calibration を順に取り込む。順序は問わない。"
+  ],
+  "guide": [
+    {
+      "text": "世界線が四本ある。太字の main が今いる場所で、残り三本が回収された記録だ。",
+      "note": "git ではこの枝分かれをブランチと呼ぶ。CHECKOUT でも一覧からでも行き来できる。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "取り込む前に、三本それぞれの時点をクリックして中身を読む。",
+      "note": "右の「観測記録」に、その時点で何が起きたかが出る。達成条件と読み比べること。",
+      "until": {
+        "type": "commitSelected",
+        "commitId": "c5"
+      }
+    },
+    {
+      "text": "MERGE で必要な世界線を取り込む。二本必要で、取り込んではいけないものが一本ある。",
+      "note": "統合は一回につき因果負荷を 2 使う。三本とも束ねる余裕はない。",
+      "until": {
+        "type": "cleared"
+      }
+    }
   ],
   "factLabels": {
+    "record.state": "観測記録",
     "device.state": "観測装置",
-    "record.state": "観測記録"
+    "calib.state": "較正",
+    "shelter.state": "観測小屋"
   },
   "valueLabels": {
+    "scattered": "散逸",
+    "sorted": "整理済み",
     "incomplete": "未完成",
     "complete": "完成",
-    "scattered": "散逸",
-    "sorted": "整理済み"
+    "raw": "未較正",
+    "calibrated": "較正済み",
+    "standing": "現存",
+    "demolished": "取り壊し済み"
   }
 }

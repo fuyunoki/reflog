@@ -1,0 +1,168 @@
+{
+  "id": "ch0-11",
+  "title": "並べ直す",
+  "chapter": {
+    "number": 2,
+    "title": "訓練 II — よく使う手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "11"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "REBASE — 出来事を並べ直す"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-10"
+  },
+  "order": 6,
+  "teaches": "rebase",
+  "intro": [
+    "最後の術式です。REBASE —— 自分の出来事を、別の世界線の上に並べ直す力です。",
+    "統合（MERGE）は二本を束ねます。並べ直し（REBASE）は、二本だったことをなかったことにして一本にします。",
+    "結果として世界の状態は同じになります。残る記録の形が違うだけです。",
+    "ただ、並べ直すと元の時点は参照を失います。ch0-07 でやったのと同じ用心が要りますね。先に印を付けておいてください。"
+  ],
+  "outro": [
+    "統合なら、二本に分かれていた事実が図に残ります。並べ直しなら、最初から一本だったように見えます。",
+    "元の時点は消えてはいません。でも、印を付けていなければ reflog を辿る羽目になります。",
+    "並べ直しは記録の見た目を整える術式です。整えた代償に、元の形は誰の目にも触れなくなる。",
+    "——訓練は以上です。次からは実際の記録を扱います。演習とは違って、やり直しはききませんよ。"
+  ],
+  "initialFacts": {
+    "standard.version": "old",
+    "reading.state": "raw"
+  },
+  "rootMessage": "訓練記録 11: 観測開始",
+  "rootNarrative": "旧基準のまま。観測値も未補正だ。",
+  "setup": [
+    {
+      "kind": "branch",
+      "name": "upstream",
+      "at": "c1"
+    },
+    {
+      "kind": "commit",
+      "message": "観測値を補正する",
+      "changes": {
+        "reading.state": "corrected"
+      },
+      "narrative": "あなたが手を入れた分だ。観測値に補正を掛けた。並べ直せば、この時点は作り直される。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "upstream"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "基準が更新される",
+      "changes": {
+        "standard.version": "new"
+      },
+      "narrative": "本流の記録。あなたが作業している間に、観測基準そのものが更新されていた。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "standard-new",
+      "label": "新しい基準が反映されている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "standard.version",
+        "value": "new"
+      }
+    },
+    {
+      "id": "reading-corrected",
+      "label": "観測値の補正が残っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "reading.state",
+        "value": "corrected"
+      }
+    },
+    {
+      "id": "original-kept",
+      "label": "並べ直す前の時点を、辿れるまま残している",
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c2"
+      }
+    },
+    {
+      "id": "upstream-kept",
+      "label": "本流の記録を捨てていない",
+      "optional": true,
+      "predicate": {
+        "type": "branchExists",
+        "branch": "upstream"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "branch",
+    "rebase"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 5,
+  "hints": [
+    "今回は統合（MERGE）を渡していない。並べ直しだけで解く。",
+    "並べ直すと、元の時点は作り直され、古い方はどの世界線からも辿れなくなる。",
+    "先に BRANCH で元の先端に印を付ける。負荷は 0 だ。",
+    "印を付けてから REBASE を押し、upstream を選ぶ。"
+  ],
+  "guide": [
+    {
+      "text": "本流（upstream）が先に進んでいる。あなたの補正は、古い基準の上に乗ったままだ。",
+      "note": "このまま放っておくと、補正が古い前提のものだったのか分からなくなる。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "並べ直す前に、いまの先端（c2）に BRANCH で印を付ける。",
+      "note": "並べ直しは元の時点を作り直す。印がなければ、元の形はどこからも辿れなくなる。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "branch"
+      }
+    },
+    {
+      "text": "REBASE で upstream の上に並べ直す。補正が、新しい基準の上に載り直る。",
+      "note": "終わったら図を確かめてほしい。二本に分かれていた線が一本になり、印を付けた元の時点だけが脇に残っている。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "standard.version": "観測基準",
+    "reading.state": "観測値"
+  },
+  "valueLabels": {
+    "old": "旧版",
+    "new": "新版",
+    "raw": "未補正",
+    "corrected": "補正済み"
+  }
+}

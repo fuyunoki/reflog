@@ -20,7 +20,11 @@ export type AbilityKind =
   | 'checkout'
   | 'merge'
   | 'revert'
-  | 'reset';
+  | 'reset'
+  | 'cherry-pick'
+  | 'tag'
+  | 'delete-tag'
+  | 'rebase';
 
 /** プレイヤーが実行する 1 手。リプレイと解法検証のためにそのまま記録される。 */
 export type AbilityCommand =
@@ -44,7 +48,19 @@ export type AbilityCommand =
       readonly resolutions?: Readonly<Record<FactKey, ConflictResolution>>;
     }
   | { readonly kind: 'revert'; readonly targetId: CommitId }
-  | { readonly kind: 'reset'; readonly targetId: CommitId };
+  | { readonly kind: 'reset'; readonly targetId: CommitId }
+  | {
+      readonly kind: 'cherry-pick';
+      readonly targetId: CommitId;
+      readonly resolutions?: Readonly<Record<FactKey, ConflictResolution>>;
+    }
+  | { readonly kind: 'tag'; readonly name: string; readonly at?: CommitId }
+  | { readonly kind: 'delete-tag'; readonly name: string }
+  | {
+      readonly kind: 'rebase';
+      readonly onto: BranchName;
+      readonly resolutions?: Readonly<Record<FactKey, ConflictResolution>>;
+    };
 
 /**
  * 因果負荷 —— 歴史を歪めた代償。
@@ -60,6 +76,13 @@ export const CAUSAL_LOAD: Readonly<Record<AbilityKind, number>> = {
   merge: 2,
   revert: 2,
   reset: 5,
+  // 別の世界線から出来事だけを引き抜く。merge より高くつく。
+  'cherry-pick': 3,
+  // 印を付けるだけで歴史は動かない
+  tag: 0,
+  'delete-tag': 0,
+  // 歴史の並びそのものを作り直す。最も重い術式のひとつ
+  rebase: 4,
 };
 
 export const causalLoadOf = (command: AbilityCommand): number =>

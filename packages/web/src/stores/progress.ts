@@ -10,6 +10,7 @@
 import { computed, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import type {
+  AbilityKind,
   DifficultyLevel,
   GeneratedStage,
   MissionOutcome,
@@ -25,6 +26,7 @@ import {
   recordMission,
   toWorldHistory,
 } from '@reflog/core';
+import { stageSource } from '@/infrastructure/StaticStageSource';
 import {
   LOCAL_PLAYER_ID,
   LocalStorageProgressRepository,
@@ -51,6 +53,19 @@ export const useProgressStore = defineStore('progress', () => {
   const clearedCount = computed(
     () => Object.values(progress.value.records).filter((r) => r.cleared).length,
   );
+
+  /**
+   * これまでに渡された術式。
+   * 訓練で覚えたものが後の記録で使えないのは不自然なので、クリア済みの分を積み上げる。
+   */
+  const learnedAbilities = computed<readonly AbilityKind[]>(() => {
+    const learned = new Set<AbilityKind>();
+    for (const spec of stageSource.all) {
+      if (!progress.value.records[spec.id]?.cleared) continue;
+      for (const ability of spec.abilities) learned.add(ability);
+    }
+    return [...learned];
+  });
 
   const isCleared = (stageId: StageId): boolean =>
     progress.value.records[stageId]?.cleared ?? false;
@@ -126,6 +141,7 @@ export const useProgressStore = defineStore('progress', () => {
     missionNumber,
     history,
     clearedCount,
+    learnedAbilities,
     isCleared,
     recordOf,
     load,

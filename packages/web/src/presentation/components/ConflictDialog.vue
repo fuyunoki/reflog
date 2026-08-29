@@ -13,7 +13,10 @@ import ModalShell from './ModalShell.vue';
 const props = defineProps<{
   open: boolean;
   spec: StageSpec;
-  from: string;
+  /** どの操作から来た矛盾か。文言と conflict マーカーの見え方が変わる。 */
+  kind: 'merge' | 'cherry-pick' | 'rebase';
+  /** merge なら統合元の世界線、cherry-pick なら持ち込む時点。 */
+  source: string;
   conflicts: readonly Conflict[];
   choices: Record<FactKey, ConflictResolution>;
   allDecided: boolean;
@@ -28,6 +31,26 @@ const emit = defineEmits<{
 const chosenSide = (key: FactKey): string | undefined => props.choices[key]?.type;
 
 const rawValue = (value: string | null): string => (value === null ? '(なし)' : value);
+
+/**
+ * rebase では ours / theirs の向きが merge と逆になる。
+ * 本物の git と同じ挙動だが、混乱しやすいので画面でも言葉を変える。
+ */
+const oursHeading = (): string =>
+  props.kind === 'rebase' ? `並べ直す先（${props.source}）` : '現在の世界線';
+
+const theirsHeading = (): string =>
+  props.kind === 'rebase' ? 'これから載せる出来事' : props.source;
+
+const oursSentence = (): string =>
+  props.kind === 'rebase' ? '並べ直す先では' : 'この世界では';
+
+const theirsSentence = (): string =>
+  props.kind === 'merge'
+    ? '回収された記録では'
+    : props.kind === 'rebase'
+      ? '載せようとしている出来事では'
+      : '持ち込もうとしている出来事では';
 </script>
 
 <template>
@@ -46,12 +69,11 @@ const rawValue = (value: string | null): string => (value === null ? '(なし)' 
         :class="{ 'is-chosen': chosenSide(conflict.key) === 'ours' }"
         @click="emit('decide', conflict.key, { type: 'ours' })"
       >
-        <span class="side"><span class="side-key">Ours</span> — 現在の世界線</span>
+        <span class="side"><span class="side-key">Ours</span> — {{ oursHeading() }}</span>
         <span class="jp">
-          この世界では、{{ factLabel(spec, conflict.key) }}は<strong>{{
+          {{ oursSentence() }}、{{ factLabel(spec, conflict.key) }}は<strong>{{
             valueLabel(spec, conflict.ours)
-          }}</strong
-          >のままだ。
+          }}</strong>だ。
         </span>
         <span class="raw">{{ conflict.key }} = {{ rawValue(conflict.ours) }}</span>
       </button>
@@ -64,17 +86,16 @@ const rawValue = (value: string | null): string => (value === null ? '(なし)' 
         :class="{ 'is-chosen': chosenSide(conflict.key) === 'theirs' }"
         @click="emit('decide', conflict.key, { type: 'theirs' })"
       >
-        <span class="side"><span class="side-key">Theirs</span> — {{ from }}</span>
+        <span class="side"><span class="side-key">Theirs</span> — {{ theirsHeading() }}</span>
         <span class="jp">
-          回収された記録では、{{ factLabel(spec, conflict.key) }}は<strong>{{
+          {{ theirsSentence() }}、{{ factLabel(spec, conflict.key) }}は<strong>{{
             valueLabel(spec, conflict.theirs)
-          }}</strong
-          >だった。
+          }}</strong>だった。
         </span>
         <span class="raw">{{ conflict.key }} = {{ rawValue(conflict.theirs) }}</span>
       </button>
 
-      <div class="marker">&gt;&gt;&gt;&gt;&gt;&gt;&gt; {{ from }}</div>
+      <div class="marker">&gt;&gt;&gt;&gt;&gt;&gt;&gt; {{ source }}</div>
     </div>
 
     <p class="note jp">

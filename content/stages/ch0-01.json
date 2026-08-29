@@ -2,24 +2,45 @@
   "id": "ch0-01",
   "title": "着任",
   "chapter": {
-    "number": 0,
-    "title": "観測局へようこそ"
+    "number": 1,
+    "title": "訓練 I — 日常の手",
+    "kind": "training"
   },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "01"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "REVERT — 起きた出来事を打ち消す"
+    }
+  ],
+  "order": 1,
+  "teaches": "revert",
   "intro": [
-    "観測局へようこそ。今日からあなたは「世界線修正官」だ。",
-    "仕事は単純に言える。壊れた歴史を見つけ、あるべき形に戻す。",
-    "まずは訓練用の記録で手を動かしてもらう。失敗しても、この記録は誰の人生でもない。"
+    "はじめまして。フユノキといいます。今日からあなたの修正に立ち会います。",
+    "観測局へようこそ。あなたは今日から修正官です。壊れた歴史を見つけて、あるべき形に戻すのが仕事になります。",
+    "最初の術式を渡しますね。REVERT —— 起きた出来事を打ち消す力です。",
+    "画面の上に「手数」と「因果負荷」が出ています。歴史を歪めるほど負荷が増えて、上限を超えるとその日はもう手が出せません。",
+    "それと、起きたこと全部が異常とは限りません。何を戻すかは、記録を読んで自分で決めてください。こちらからは言いませんので。"
   ],
   "outro": [
-    "これで一通りだ。",
-    "ひとつ覚えておいてほしい。我々は「なかったこと」にはしない。打ち消した、という事実ごと残す。",
-    "消してしまえば、それが起きたことを誰も知らなくなるからだ。"
+    "お疲れさまでした。打ち消しても、起きたという記録は残ります。打ち消した、という事実ごと。",
+    "消してしまうと、それが起きたことを誰も知らなくなりますから。修正の三原則の一番目は、そういう意味です。",
+    "——それと、正規の手順まで戻さなかったのはよかったですね。あれを開けていたら、朝まで外気が入っていました。"
   ],
   "initialFacts": {
-    "lamp.state": "lit"
+    "lamp.state": "lit",
+    "door.state": "open",
+    "recorder.state": "running"
   },
-  "rootMessage": "訓練記録の開始",
-  "rootNarrative": "観測室の灯りがついている。ごく普通の、何も起きていない時点。",
+  "rootMessage": "訓練記録 01: 観測開始",
+  "rootNarrative": "灯りは点き、扉は開き、記録装置は回っている。日中の観測室の姿だ。",
   "setup": [
     {
       "kind": "commit",
@@ -27,7 +48,23 @@
       "changes": {
         "lamp.state": "out"
       },
-      "narrative": "ある時刻、灯りが消えた。訓練用に仕込まれた異常だ。"
+      "narrative": "二十二時十四分、観測室の照明が落ちた。配電の記録に、該当する操作はない。"
+    },
+    {
+      "kind": "commit",
+      "message": "当直が扉を施錠する",
+      "changes": {
+        "door.state": "locked"
+      },
+      "narrative": "二十二時三十分、当直が退出時に扉を施錠。手順書どおりの操作で、日誌にも署名がある。"
+    },
+    {
+      "kind": "commit",
+      "message": "記録装置が停止する",
+      "changes": {
+        "recorder.state": "stopped"
+      },
+      "narrative": "二十三時四十七分、記録装置が停止。停止操作を行った者の記録はない。"
     }
   ],
   "goals": [
@@ -41,13 +78,42 @@
       }
     },
     {
+      "id": "recorder-running",
+      "label": "記録装置が動いている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "recorder.state",
+        "value": "running"
+      }
+    },
+    {
+      "id": "door-locked",
+      "label": "扉は施錠されたまま（正規の手順は戻さない）",
+      "predicate": {
+        "type": "factEquals",
+        "key": "door.state",
+        "value": "locked"
+      }
+    },
+    {
       "id": "history-preserved",
-      "label": "異常の記録を消していない",
+      "label": "異常が起きたという記録を消していない",
+      "optional": true,
       "predicate": {
         "type": "historyPreserved",
         "commitId": "c2"
       }
     }
+  ],
+  "abilities": [
+    "revert"
+  ],
+  "moveLimit": 4,
+  "causalLoadLimit": 6,
+  "hints": [
+    "三つ起きているが、すべてが異常とは限らない。時点をクリックして記録を読む。",
+    "扉の施錠には署名がある。当直の正規の手順だ。これは戻さない。",
+    "灯りの消灯（C2）と記録装置の停止（C4）を REVERT する。"
   ],
   "guide": [
     {
@@ -58,36 +124,31 @@
       }
     },
     {
-      "text": "赤い丸が、異常の起きた時点。クリックして選んでみる。",
-      "note": "選ぶと、画面の下にその時点で何が起きたかが出る。",
+      "text": "三つの時点をすべてクリックして、記録を読んでほしい。ひとつは異常ではない。",
+      "note": "右の「観測記録」に、その時点で何が起きたかが出る。署名のある操作は正規の手順だ。",
       "until": {
-        "type": "commitSelected",
-        "commitId": "c2"
+        "type": "acknowledged"
       }
     },
     {
-      "text": "左の REVERT を押す。その出来事の影響だけを打ち消せる。",
+      "text": "異常だけを REVERT で打ち消す。二つある。",
       "note": "右の「達成すべき世界の状態」がすべて埋まれば、修正は完了になる。",
       "until": {
         "type": "cleared"
       }
     }
   ],
-  "abilities": [
-    "checkout",
-    "revert"
-  ],
-  "moveLimit": 4,
-  "causalLoadLimit": 8,
-  "hints": [
-    "異常の起きた時点を選んでから、REVERT を押す。",
-    "打ち消す対象は、灯りが消えた時点（C2）。"
-  ],
   "factLabels": {
-    "lamp.state": "観測室の灯り"
+    "lamp.state": "観測室の灯り",
+    "door.state": "扉",
+    "recorder.state": "記録装置"
   },
   "valueLabels": {
-    "lit": "点いている",
-    "out": "消えている"
+    "lit": "点灯",
+    "out": "消灯",
+    "open": "開放",
+    "locked": "施錠",
+    "running": "稼働",
+    "stopped": "停止"
   }
 }

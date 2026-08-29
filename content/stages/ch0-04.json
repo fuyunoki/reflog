@@ -1,0 +1,162 @@
+{
+  "id": "ch0-04",
+  "title": "消すことと、打ち消すこと",
+  "chapter": {
+    "number": 1,
+    "title": "訓練 I — 日常の手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "04"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "RESET — 時点ごと巻き戻す"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-02"
+  },
+  "order": 5,
+  "teaches": "reset",
+  "intro": [
+    "新しい術式を渡しますね。RESET —— 時点ごと巻き戻す力です。",
+    "これまで使ってきた REVERT とは違います。打ち消すのではなく、なかったことにする。",
+    "巻き戻しは速いです。ただ、範囲を選べません。指定した時点から先は、正しかったものも含めて全部消えます。",
+    "この記録には、消してはならない正規の手続きが一つ混じっています。どこまで戻せるかを、見極めてください。"
+  ],
+  "outro": [
+    "打ち消したなら、書庫が開かれたという記録は残っています。誰かが開けたことを、後から知ることができます。",
+    "巻き戻したなら、何も残りません。書庫は最初から閉じられたままだったことになります。",
+    "因果負荷が REVERT の 2 に対して RESET だけ 5 なのは、この差のぶんです。速い手ほど高くつきます。",
+    "——根元まで戻さなかったのはよかったですね。あれを消していたら、当直が巡回した記録ごと無くなっていました。",
+    "現場でどちらを使うかは、その都度あなたが決めることになります。"
+  ],
+  "initialFacts": {
+    "patrol.state": "unlogged",
+    "archive.state": "sealed",
+    "copy.state": "none"
+  },
+  "rootMessage": "訓練記録 04: 観測開始",
+  "rootNarrative": "書庫はまだ封じられている。巡回の記録もまだない。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "当直が巡回を記録する",
+      "changes": {
+        "patrol.state": "logged"
+      },
+      "narrative": "二十一時、当直が定時巡回を終えて日誌に記入。署名がある。正規の手続きだ。"
+    },
+    {
+      "kind": "commit",
+      "message": "書庫が開かれる",
+      "changes": {
+        "archive.state": "open"
+      },
+      "narrative": "夜間、記録保管庫の封が解かれた。開封の手続きは踏まれていない。"
+    },
+    {
+      "kind": "commit",
+      "message": "写しが持ち出される",
+      "changes": {
+        "copy.state": "taken"
+      },
+      "narrative": "翌朝、観測記録の写しが一部欠けていることが分かった。"
+    }
+  ],
+  "goals": [
+    {
+      "id": "archive-sealed",
+      "label": "書庫が封じられている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "archive.state",
+        "value": "sealed"
+      }
+    },
+    {
+      "id": "copy-none",
+      "label": "写しが持ち出されていない",
+      "predicate": {
+        "type": "factEquals",
+        "key": "copy.state",
+        "value": "none"
+      }
+    },
+    {
+      "id": "patrol-logged",
+      "label": "当直の巡回記録は残っている（正規の手続きだ）",
+      "predicate": {
+        "type": "factEquals",
+        "key": "patrol.state",
+        "value": "logged"
+      }
+    },
+    {
+      "id": "history-preserved",
+      "label": "書庫が開かれたという記録を残したまま達成した",
+      "optional": true,
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c3"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "revert",
+    "reset"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 6,
+  "hints": [
+    "出来事は三つ積まれているが、異常は二つだけだ。",
+    "REVERT なら二回。RESET なら一回で済むが、戻す先を間違えると正規の記録まで消える。",
+    "根元（c1）まで戻してはいけない。巡回の記録は c2 に入っている。",
+    "任意の条件まで満たすなら、REVERT で c4・c3 を順に打ち消す。"
+  ],
+  "guide": [
+    {
+      "text": "出来事が三つ積まれている。まず全部クリックして、どれが異常かを読み分ける。",
+      "note": "署名のある手続きは正規のものだ。ch0-01 と同じ読み方でいい。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "REVERT なら異常を一つずつ打ち消す。RESET なら一手で戻せるが、指定した時点から先は全部消える。",
+      "note": "根元まで巻き戻すと、正規の記録まで巻き添えになる。戻す先は自分で選ぶこと。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "どちらでも訓練は終わる。任意の条件を満たせるのは、打ち消す側だけだ。",
+      "note": "巻き戻したあとでも、やり直せば別の手を試せる。両方見ておくといい。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "patrol.state": "当直の巡回",
+    "archive.state": "記録保管庫",
+    "copy.state": "観測記録の写し"
+  },
+  "valueLabels": {
+    "unlogged": "未記入",
+    "logged": "記入済み",
+    "sealed": "封鎖",
+    "open": "開放",
+    "none": "所在あり",
+    "taken": "持ち出し"
+  }
+}

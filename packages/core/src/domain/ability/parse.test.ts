@@ -41,6 +41,13 @@ describe('parseCommand', () => {
     });
   });
 
+  it('git cherry-pick を解釈する', () => {
+    assert.deepEqual(expectOk(parseCommand('git cherry-pick c3')), {
+      kind: 'ability',
+      command: { kind: 'cherry-pick', targetId: 'c3' },
+    });
+  });
+
   it('git merge は決着方法を保留したまま返す', () => {
     const action = expectOk(parseCommand('git merge observation'));
     assert.deepEqual(action, { kind: 'merge', from: 'observation', strategy: 'ask' });
@@ -109,6 +116,42 @@ describe('parseCommand', () => {
     assert.deepEqual(hard, plain);
   });
 
+  it('git rebase は決着方法を保留したまま返す', () => {
+    assert.deepEqual(expectOk(parseCommand('git rebase main')), {
+      kind: 'rebase',
+      onto: 'main',
+      strategy: 'ask',
+    });
+    const theirs = expectOk(parseCommand('git rebase main --theirs'));
+    assert.equal(theirs.kind === 'rebase' && theirs.strategy, 'theirs');
+  });
+
+  it('git tag は付ける・消す・一覧を見分ける', () => {
+    assert.deepEqual(expectOk(parseCommand('git tag')), { kind: 'query', query: 'tag' });
+    assert.deepEqual(expectOk(parseCommand('git tag baseline')), {
+      kind: 'ability',
+      command: { kind: 'tag', name: 'baseline' },
+    });
+    assert.deepEqual(expectOk(parseCommand('git tag baseline c2')), {
+      kind: 'ability',
+      command: { kind: 'tag', name: 'baseline', at: 'c2' },
+    });
+    assert.deepEqual(expectOk(parseCommand('git tag -d baseline')), {
+      kind: 'ability',
+      command: { kind: 'delete-tag', name: 'baseline' },
+    });
+  });
+
+  it('git diff は引数の数で比べ方が変わる', () => {
+    assert.deepEqual(expectOk(parseCommand('git diff')), { kind: 'diff' });
+    assert.deepEqual(expectOk(parseCommand('git diff c2')), { kind: 'diff', from: 'c2' });
+    assert.deepEqual(expectOk(parseCommand('git diff c1 c3')), {
+      kind: 'diff',
+      from: 'c1',
+      to: 'c3',
+    });
+  });
+
   it('問い合わせ系はそのまま返す', () => {
     for (const [input, query] of [
       ['git log', 'log'],
@@ -127,8 +170,9 @@ describe('parseCommand のエラー', () => {
   });
 
   it('知らないコマンド', () => {
-    const error = expectErr(parseCommand('git rebase main'), 'UnknownCommand');
-    assert.equal(error.command, 'rebase');
+    // rebase は実装済みなので、まだ無いものを使う
+    const error = expectErr(parseCommand('git stash'), 'UnknownCommand');
+    assert.equal(error.command, 'stash');
   });
 
   it('git ですらない入力', () => {

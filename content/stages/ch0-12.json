@@ -1,0 +1,193 @@
+{
+  "id": "ch0-12",
+  "title": "観測点を移す",
+  "chapter": {
+    "number": 1,
+    "title": "訓練 I — 日常の手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "12"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "CHECKOUT — 見ている記録を切り替える"
+    }
+  ],
+  "order": 3,
+  "teaches": "checkout",
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-09"
+  },
+  "intro": [
+    "次の術式は CHECKOUT —— いま見ている記録を、別の記録に切り替える力です。",
+    "観測局は一本の歴史だけを持っているわけではありません。同じ日の観測が、三箇所から別々に上がってきます。",
+    "今日の報告に食い違いがあります。三つのうち一つの観測所で、封が破られた形跡があるんです。",
+    "どこかは書いていません。自分で見て回って突き止めて、その場で戻してきてください。"
+  ],
+  "outro": [
+    "切り替えても、記録そのものは何も変わりません。見ている場所が動いただけです。",
+    "だからこそ、手を入れる前に「いまどこに立っているか」を確かめる癖をつけてほしいんです。",
+    "太字になっている世界線が、あなたのいる場所です。ここを間違えると、直す相手を間違えます。"
+  ],
+  "initialFacts": {
+    "origin.name": "central",
+    "reading.value": "unset",
+    "seal.state": "intact"
+  },
+  "rootMessage": "訓練記録 12: 観測開始",
+  "rootNarrative": "まだどの観測所からも報告が上がっていない。ここから三つに分かれる。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "中央観測所が記録する",
+      "changes": {
+        "origin.name": "central",
+        "reading.value": "12.4"
+      },
+      "narrative": "中央観測所の報告。数値は 12.4。封は保たれている。"
+    },
+    {
+      "kind": "branch",
+      "name": "north",
+      "at": "c2"
+    },
+    {
+      "kind": "branch",
+      "name": "south",
+      "at": "c2"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "north"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "北観測所が記録する",
+      "changes": {
+        "origin.name": "north",
+        "reading.value": "12.9"
+      },
+      "narrative": "北観測所の報告。同じ日の数値は 12.9。中央とは差がある。"
+    },
+    {
+      "kind": "commit",
+      "message": "封が破られる",
+      "changes": {
+        "seal.state": "broken"
+      },
+      "narrative": "記録筐体の封が破られている。開封の手続きも、開けた者の署名もない。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "south"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "南観測所が記録する",
+      "changes": {
+        "origin.name": "south",
+        "reading.value": "12.6"
+      },
+      "narrative": "南観測所の報告。数値は 12.6。封は保たれている。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "on-broken-site",
+      "label": "12.9 を記録した観測所の世界に立っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "reading.value",
+        "value": "12.9"
+      }
+    },
+    {
+      "id": "seal-intact",
+      "label": "その観測所の封が元に戻っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "seal.state",
+        "value": "intact"
+      }
+    },
+    {
+      "id": "history-preserved",
+      "label": "封が破られたという記録は消していない",
+      "optional": true,
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c4"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "revert"
+  ],
+  "moveLimit": 2,
+  "causalLoadLimit": 4,
+  "hints": [
+    "CHECKOUT は手数も負荷も使わない。三本とも見て回って構わない。",
+    "右の「いまの世界」に出る観測値が、立っている場所によって変わる。12.9 が出る一本を探す。",
+    "コンソールなら git checkout north / git checkout south で行き来できる。",
+    "北（north）に立ったまま、封を破った時点を REVERT する。"
+  ],
+  "guide": [
+    {
+      "text": "世界線が三本ある。いま立っているのは main で、太字になっている方だ。",
+      "note": "CHECKOUT は手数も因果負荷も消費しない。ためらわずに全部見て回っていい。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "CHECKOUT で north と south に移り、右の「いまの世界」を見比べる。異常があるのは一本だけだ。",
+      "note": "切り替えても記録は書き換わらない。見ている場所が動くだけだ。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "checkout"
+      }
+    },
+    {
+      "text": "異常のある世界線に立ったまま、封を破った時点を REVERT する。",
+      "note": "立っている場所を間違えたまま打ち消すと、直す相手を間違える。太字がどこかを確かめてから使うこと。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "origin.name": "報告元",
+    "reading.value": "観測値",
+    "seal.state": "記録筐体の封"
+  },
+  "valueLabels": {
+    "central": "中央観測所",
+    "north": "北観測所",
+    "south": "南観測所",
+    "unset": "未報告",
+    "intact": "封あり",
+    "broken": "破損"
+  }
+}

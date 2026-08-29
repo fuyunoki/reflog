@@ -10,12 +10,14 @@
  */
 import { computed, onMounted, ref } from 'vue';
 import type { GeneratedStage, StageSpec } from '@reflog/core';
-import { DIFFICULTIES, countsAsMove } from '@reflog/core';
+import { DIFFICULTIES, availabilityOf, countsAsMove } from '@reflog/core';
 import { useProgressStore } from '@/stores/progress';
 import { useSessionStore } from '@/stores/session';
 import { useAuthStore } from '@/stores/auth';
 import { stageSource } from '@/infrastructure/StaticStageSource';
 import StageView from '@/presentation/views/StageView.vue';
+import AbilityCatalog from '@/presentation/components/AbilityCatalog.vue';
+import { ABILITY } from '@/presentation/labels';
 
 type Screen = 'home' | 'stage';
 
@@ -29,33 +31,76 @@ const current = ref<StageSpec | null>(null);
 const currentMission = ref<GeneratedStage | null>(null);
 const glossaryOpen = ref(false);
 
+/** 訓練と本編は目的が違うので、混ぜずに切り替えて見せる。 */
+const section = ref<'training' | 'story'>('training');
+
 /** 章ごとにまとめる。0 章は訓練として扱う。 */
 const chapters = computed(() => {
-  const grouped = new Map<number, { number: number; title: string; stages: StageSpec[] }>();
+  type Group = {
+    key: string;
+    label: string;
+    /** 訓練を先、本編を後ろに置くための並び順。 */
+    rank: number;
+    stages: StageSpec[];
+  };
+
+  const grouped = new Map<string, Group>();
   for (const spec of stageSource.all) {
-    const entry = grouped.get(spec.chapter.number) ?? {
-      number: spec.chapter.number,
-      title: spec.chapter.title,
+    const training = (spec.chapter.kind ?? (spec.chapter.number === 0 ? 'training' : 'story')) === 'training';
+    const key = `${training ? 'training' : 'story'}-${spec.chapter.number}`;
+    const entry = grouped.get(key) ?? {
+      key,
+      label: training
+        ? spec.chapter.title
+        : `第 ${spec.chapter.number} 章 — ${spec.chapter.title}`,
+      rank: (training ? 0 : 1000) + spec.chapter.number,
       stages: [],
     };
     entry.stages.push(spec);
-    grouped.set(spec.chapter.number, entry);
+    grouped.set(key, entry);
   }
+
   return [...grouped.values()]
     .map((chapter) => ({
       ...chapter,
-      stages: [...chapter.stages].sort((a, b) => a.id.localeCompare(b.id)),
+      /** 並びは ID ではなく、渡す順に従う。 */
+      stages: [...chapter.stages]
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id))
+        .filter((spec) => availabilityOf(progress.history, spec) !== 'locked'),
+      total: chapter.stages.length,
     }))
-    .sort((a, b) => a.number - b.number);
+    .filter((chapter) => chapter.stages.length > 0)
+    .sort((a, b) => a.rank - b.rank);
 });
 
+const trainingChapters = computed(() => chapters.value.filter((c) => c.rank < 1000));
+const storyChapters = computed(() => chapters.value.filter((c) => c.rank >= 1000));
+
+/** 本編が一つも開いていないうちは、切り替える意味がないので出さない。 */
+const storyAvailable = computed(() => storyChapters.value.length > 0);
+
+const shownChapters = computed(() =>
+  section.value === 'training' && storyAvailable.value
+    ? trainingChapters.value
+    : section.value === 'story'
+      ? storyChapters.value
+      : chapters.value,
+);
+
 const difficultyLabel = computed(() => DIFFICULTIES[progress.difficulty].label);
+
+/**
+ * ステージは順に開く。新しい術式は必ず訓練で渡されるので、
+ * 飛ばして先へ進めないようにしておく。
+ */
+const availability = (spec: StageSpec) => availabilityOf(progress.history, spec);
+
 
 /** まだ 1 つもクリアしていないなら、最初のステージへ誘導する。 */
 const firstUncleared = computed<StageSpec | null>(() => {
   for (const chapter of chapters.value) {
     for (const spec of chapter.stages) {
-      if (!progress.isCleared(spec.id)) return spec;
+      if (availability(spec) === 'open') return spec;
     }
   }
   return null;
@@ -131,7 +176,10 @@ const exit = (): void => {
     @exit="exit"
   />
 
-  <main v-else class="home">
+  <div v-else class="home">
+    <!-- 本文側。ここだけがスクロールする -->
+    <main class="home-main">
+      <div class="home-inner">
     <header class="masthead">
       <h1 class="wordmark">REFLOG</h1>
       <p class="tagline jp">git の操作で、壊れてしまった歴史を直すパズル。</p>
@@ -173,14 +221,31 @@ const exit = (): void => {
       <span class="label">操作は最初のステージで一つずつ教える</span>
     </section>
 
-    <section v-for="chapter in chapters" :key="chapter.number" class="block">
+    <div v-if="storyAvailable" class="tabs" role="group" aria-label="表示する記録">
+      <button
+        type="button"
+        :class="{ active: section === 'training' }"
+        :aria-pressed="section === 'training'"
+        @click="section = 'training'"
+      >
+        訓練
+      </button>
+      <button
+        type="button"
+        :class="{ active: section === 'story' }"
+        :aria-pressed="section === 'story'"
+        @click="section = 'story'"
+      >
+        本編
+      </button>
+    </div>
+
+    <section v-for="chapter in shownChapters" :key="chapter.key" class="block">
       <div class="block-head">
-        <span class="label">
-          {{ chapter.number === 0 ? '訓練' : `第 ${chapter.number} 章` }} — {{ chapter.title }}
-        </span>
+        <span class="label">{{ chapter.label }}</span>
         <span class="label">
           {{ chapter.stages.filter((s) => progress.isCleared(s.id)).length }} /
-          {{ chapter.stages.length }}
+          {{ chapter.total }}
         </span>
       </div>
       <div class="list">
@@ -197,6 +262,7 @@ const exit = (): void => {
             <span class="entry-sub jp">{{ spec.intro[0] ?? '' }}</span>
           </span>
           <span class="entry-state" :class="{ done: progress.isCleared(spec.id) }">
+            <span v-if="spec.teaches" class="teaches">{{ ABILITY[spec.teaches].name }}</span>
             {{ progress.isCleared(spec.id) ? '修正済み' : '未修正' }}
           </span>
         </button>
@@ -248,19 +314,65 @@ const exit = (): void => {
         {{ auth.message }}
         <button class="link" type="button" @click="auth.dismissMessage()">閉じる</button>
       </p>
-    </section>
-  </main>
+        </section>
+      </div>
+    </main>
+
+    <!--
+      手渡された術式の控え。本文とは別に置き、独立してスクロールする。
+      本文をどれだけ送っても、ここは動かない。
+    -->
+    <aside class="home-side">
+      <AbilityCatalog :learned="progress.learnedAbilities" />
+    </aside>
+  </div>
 </template>
 
 <style scoped>
 .home {
-  min-height: 100dvh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1px;
+  background: var(--rule);
+}
+
+/* 本文側だけがスクロールする */
+.home-main {
+  overflow-y: auto;
+  background: var(--ground);
+  padding: clamp(24px, 6vw, 72px) 20px 48px;
+}
+
+/* 読みやすさのため、本文そのものは広げすぎない */
+.home-inner {
   max-width: 720px;
   margin: 0 auto;
-  padding: clamp(24px, 6vw, 72px) 20px 48px;
   display: flex;
   flex-direction: column;
   gap: 30px;
+}
+
+/* 側柱。本文を送っても動かず、長ければここだけが送られる */
+.home-side {
+  overflow-y: auto;
+  background: var(--ground);
+  padding: clamp(24px, 4vw, 48px) 18px 40px;
+}
+
+@media (max-width: 900px) {
+  .home {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-columns: 1fr;
+  }
+  .home-main,
+  .home-side {
+    overflow-y: visible;
+  }
+  .home-side {
+    padding-top: 0;
+  }
 }
 
 .masthead {
@@ -368,6 +480,37 @@ const exit = (): void => {
   padding: 13px 20px;
 }
 
+.tabs {
+  display: flex;
+  border: 1px solid var(--rule-firm);
+  align-self: flex-start;
+}
+
+.tabs button {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 8px 18px;
+  background: transparent;
+  color: var(--ink-muted);
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+.tabs button + button {
+  border-left: 1px solid var(--rule-firm);
+}
+.tabs button.active {
+  background: var(--ink);
+  color: var(--panel);
+}
+.tabs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .block {
   display: flex;
   flex-direction: column;
@@ -437,6 +580,17 @@ const exit = (): void => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* その回で新しく渡す術式 */
+.teaches {
+  display: block;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  margin-bottom: 2px;
 }
 
 .entry-state {

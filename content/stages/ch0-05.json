@@ -1,0 +1,210 @@
+{
+  "id": "ch0-05",
+  "title": "ひとつだけ持ち出す",
+  "chapter": {
+    "number": 2,
+    "title": "訓練 II — よく使う手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "05"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "CHERRY-PICK — 出来事をひとつだけ持ち出す"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-08"
+  },
+  "order": 3,
+  "teaches": "cherry-pick",
+  "intro": [
+    "次の術式は CHERRY-PICK —— 別の世界線から、出来事をひとつだけ持ち出す力です。",
+    "統合（MERGE）は世界線ごと取り込みます。そこにある出来事は、要る要らないに関わらず全部ついてきます。",
+    "シンドバッドが回収した記録が二本あります。どちらにも欲しいものが一つずつ、要らないものが一つずつ入っています。",
+    "欲しいものだけを抜いてきてください。丸ごと束ねると、観測室が二回壊れますよ。"
+  ],
+  "outro": [
+    "持ち出した先の世界線は、何も変わりません。あちらでは今も観測室が水に沈んでいます。",
+    "我々が触れるのは、こちら側の記録だけです。それを「回収」と呼んでいるだけで。",
+    "統合と抜き出しの使い分けが身についたなら、それでいいです。"
+  ],
+  "initialFacts": {
+    "instrument.state": "broken",
+    "power.state": "out",
+    "room.state": "intact"
+  },
+  "rootMessage": "訓練記録 05: 観測開始",
+  "rootNarrative": "計器は壊れ、送電も止まったまま。観測室だけは乾いている。",
+  "setup": [
+    {
+      "kind": "branch",
+      "name": "spare",
+      "at": "c1"
+    },
+    {
+      "kind": "branch",
+      "name": "relief",
+      "at": "c1"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "spare"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "計器が修理される",
+      "changes": {
+        "instrument.state": "repaired"
+      },
+      "narrative": "回収された記録。その世界線では、計器は三日で直っていた。"
+    },
+    {
+      "kind": "commit",
+      "message": "観測室が水没する",
+      "changes": {
+        "room.state": "flooded"
+      },
+      "narrative": "同じ記録の続き。配管が破れ、観測室は水に沈んだ。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "relief"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "配電盤が交換される",
+      "changes": {
+        "power.state": "restored"
+      },
+      "narrative": "もう一本の記録。配電盤が新品に換わり、送電が戻っている。"
+    },
+    {
+      "kind": "commit",
+      "message": "観測室が閉鎖される",
+      "changes": {
+        "room.state": "closed"
+      },
+      "narrative": "同じ記録の続き。予算の都合で観測室そのものが閉鎖され、誰も入れなくなった。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "instrument-repaired",
+      "label": "計器が直っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "instrument.state",
+        "value": "repaired"
+      }
+    },
+    {
+      "id": "power-restored",
+      "label": "送電が戻っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "power.state",
+        "value": "restored"
+      }
+    },
+    {
+      "id": "room-intact",
+      "label": "観測室が無事で、使える状態にある",
+      "predicate": {
+        "type": "factEquals",
+        "key": "room.state",
+        "value": "intact"
+      }
+    },
+    {
+      "id": "sources-kept",
+      "label": "回収した世界線を捨てていない",
+      "optional": true,
+      "predicate": {
+        "type": "and",
+        "all": [
+          {
+            "type": "branchExists",
+            "branch": "spare"
+          },
+          {
+            "type": "branchExists",
+            "branch": "relief"
+          }
+        ]
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "merge",
+    "cherry-pick"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 7,
+  "hints": [
+    "MERGE を試すと、水没や閉鎖まで一緒についてくる。どちらの世界線でも同じことが起きる。",
+    "欲しいのは計器の修理と、配電盤の交換だけだ。",
+    "それぞれの世界線の、手前の時点を選ぶ。",
+    "c2 を CHERRY-PICK し、続けて c4 を CHERRY-PICK する。"
+  ],
+  "guide": [
+    {
+      "text": "回収した世界線が二本、それぞれに出来事が二つある。四つとも読んでみる。",
+      "note": "欲しいのは各一つ。もう一つは観測室を潰す出来事だ。",
+      "until": {
+        "type": "commitSelected"
+      }
+    },
+    {
+      "text": "欲しい方の時点だけを選んで CHERRY-PICK する。その出来事だけがこちらへ移る。",
+      "note": "履歴は繋がらないので、持ち出し元は手つかずのまま残る。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "cherry-pick"
+      }
+    },
+    {
+      "text": "もう一本からも、欲しい出来事だけを抜いてくる。",
+      "note": "抜き出しは統合より高くつく。それでも、要らないものを背負い込むよりは安い。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "instrument.state": "計器",
+    "power.state": "送電",
+    "room.state": "観測室"
+  },
+  "valueLabels": {
+    "broken": "故障",
+    "repaired": "修理済み",
+    "out": "停止",
+    "restored": "復旧",
+    "intact": "無事",
+    "flooded": "水没",
+    "closed": "閉鎖"
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "id": "ch0-03",
+  "title": "食い違う記録",
+  "chapter": {
+    "number": 2,
+    "title": "訓練 II — よく使う手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "03"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "MERGE — 食い違いを決着させる"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-07"
+  },
+  "order": 1,
+  "intro": [
+    "MERGE の続きです。統合したとき、記録が食い違っていた場合を扱います。",
+    "二つの記録が、同じ事柄について違うことを言っている。統合しようとすると、どちらを採るか決めろと言われます。",
+    "今日は二本ぶんあります。片方は向こうの言い分が正しくて、もう片方はこちらが正しい。",
+    "どちらが正しいかは記録の側には書いていません。時点を開いて、どう記録されたものかを読んでください。"
+  ],
+  "outro": [
+    "採らなかった方は、この世界から失われます。判断した者の名前だけが残ります。",
+    "向こうを立てる回と、こちらを立てる回が続けて来ることもあります。前の回と同じ側を選べばいい、という仕事ではないんです。",
+    "こういうとき、修正の三原則の三番目が効いてきます。あなたがなぜそちらを採ったのかは、記録にしか残りませんから。"
+  ],
+  "initialFacts": {
+    "signal.state": "unknown",
+    "gauge.value": "unrecorded",
+    "observer.name": "unknown"
+  },
+  "rootMessage": "訓練記録 03: 観測開始",
+  "rootNarrative": "信号も数値も、まだ記録されていない。ここから三つに分かれる。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "第一班が目視で報告する",
+      "changes": {
+        "signal.state": "red",
+        "gauge.value": "9.8"
+      },
+      "narrative": "第一班の観測記録。信号は赤、計器は 9.8。目視と読み取りを、その場で紙に書いている。"
+    },
+    {
+      "kind": "branch",
+      "name": "relay",
+      "at": "c1"
+    },
+    {
+      "kind": "branch",
+      "name": "desk",
+      "at": "c1"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "relay"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "中継所が「青」と記録する",
+      "changes": {
+        "signal.state": "blue"
+      },
+      "narrative": "中継所の自動記録。同じ時刻、信号は青。装置は前日に校正され、校正証明も添付されている。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "desk"
+      }
+    },
+    {
+      "kind": "commit",
+      "message": "事務室が台帳へ転記する",
+      "changes": {
+        "gauge.value": "12.4",
+        "observer.name": "sasaki"
+      },
+      "narrative": "事務室が台帳へ転記したもの。観測者が佐々木だと判明したのはこの記録のおかげだが、数値は 9.8 が 12.4 になっている。手書きの写し間違いだ。"
+    },
+    {
+      "kind": "checkout",
+      "target": {
+        "type": "branch",
+        "branch": "main"
+      }
+    }
+  ],
+  "goals": [
+    {
+      "id": "signal-blue",
+      "label": "信号は「青」で決着している",
+      "predicate": {
+        "type": "factEquals",
+        "key": "signal.state",
+        "value": "blue"
+      }
+    },
+    {
+      "id": "gauge-kept",
+      "label": "計器の値は 9.8 のまま決着している",
+      "predicate": {
+        "type": "factEquals",
+        "key": "gauge.value",
+        "value": "9.8"
+      }
+    },
+    {
+      "id": "observer-known",
+      "label": "観測者の名前が記録に入っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "observer.name",
+        "value": "sasaki"
+      }
+    },
+    {
+      "id": "relay-kept",
+      "label": "回収した記録を捨てていない",
+      "optional": true,
+      "predicate": {
+        "type": "and",
+        "all": [
+          {
+            "type": "branchExists",
+            "branch": "relay"
+          },
+          {
+            "type": "branchExists",
+            "branch": "desk"
+          }
+        ]
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "merge"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 5,
+  "hints": [
+    "統合すべき記録は二本ある。片方だけでは条件が埋まらない。",
+    "自動記録の装置は校正されている。目視の報告より信用できる。",
+    "台帳は手書きの転記だ。観測者の名前は欲しいが、数値は写し間違えている。",
+    "relay は Theirs、desk は Ours で確定する。"
+  ],
+  "guide": [
+    {
+      "text": "回収した記録が二本ある。どちらもこちらと食い違っているが、食い違っている中身は別物だ。",
+      "note": "統合する前に、それぞれの時点をクリックして、どうやって記録されたものかを読む。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "まず MERGE を試す。食い違いがあると、統合はその場では終わらず決断を求められる。",
+      "note": "自動で記録されたものと、人が手で写したもの。信用の度合いが違う。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "merge"
+      }
+    },
+    {
+      "text": "もう一本も取り込む。今度は採るべき側が逆になる。",
+      "note": "欲しい事実と、間違った事実が同じ時点に同居している。だから捨てるのではなく、食い違いだけをこちら側で決着させる。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "signal.state": "信号",
+    "gauge.value": "計器の値",
+    "observer.name": "観測者"
+  },
+  "valueLabels": {
+    "unknown": "不明",
+    "red": "赤",
+    "blue": "青",
+    "unrecorded": "未記録",
+    "sasaki": "佐々木"
+  }
+}

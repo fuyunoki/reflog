@@ -1,0 +1,132 @@
+{
+  "id": "ch0-07",
+  "title": "捨てる前に、印を",
+  "chapter": {
+    "number": 1,
+    "title": "訓練 I — 日常の手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "07"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "BRANCH — 巻き戻す前に印を付ける"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-04"
+  },
+  "intro": [
+    "BRANCH の使いどころをお教えします。巻き戻す前に、印を付けておく。",
+    "前回は、消えたものを後から拾いました。今回はその逆です。",
+    "これから main を根元まで巻き戻します。でも、その先で起きたことは残しておきたい。",
+    "先に BRANCH で印を付けておけば、巻き戻しても失われません。順番が大事です。"
+  ],
+  "outro": [
+    "世界線とは、要するに「ここを見ていろ」という印にすぎません。",
+    "印さえ残しておけば、本流をどれだけ巻き戻しても、その先は失われません。",
+    "——ここまでが日常の手です。次からは、もう少し込み入った状況を扱いますね。"
+  ],
+  "initialFacts": {
+    "channel.state": "closed",
+    "cargo.state": "held"
+  },
+  "rootMessage": "訓練記録 07: 観測開始",
+  "rootNarrative": "水路はまだ閉じている。積荷は留め置かれたままだ。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "水路が開かれる",
+      "changes": {
+        "channel.state": "open"
+      },
+      "narrative": "水門が上げられ、水路が通じた。手続き上は問題がない。"
+    },
+    {
+      "kind": "commit",
+      "message": "積荷が運び出される",
+      "changes": {
+        "cargo.state": "shipped"
+      },
+      "narrative": "留め置かれていた積荷が、その水路を通って運び出された。"
+    }
+  ],
+  "goals": [
+    {
+      "id": "channel-closed",
+      "label": "本流では水路が閉じている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "channel.state",
+        "value": "closed"
+      }
+    },
+    {
+      "id": "cargo-held",
+      "label": "本流では積荷が留め置かれている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "cargo.state",
+        "value": "held"
+      }
+    },
+    {
+      "id": "shipping-kept",
+      "label": "運び出しの記録は失っていない",
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c3"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "branch",
+    "delete-branch",
+    "reset"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 6,
+  "hints": [
+    "先に BRANCH を使う。順序が逆だと、印を付ける相手が見えなくなる。",
+    "いちばん先の時点（c3）に印を付けてから、main を c1 まで RESET する。",
+    "c3 を選んで BRANCH、次に c1 を選んで RESET。"
+  ],
+  "guide": [
+    {
+      "text": "いちばん先の時点（c3）を選び、BRANCH で印を付ける。負荷は 0 だ。",
+      "note": "この印がないまま巻き戻すと、あとで reflog を辿る羽目になる。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "branch"
+      }
+    },
+    {
+      "text": "次に c1 を選んで RESET する。main は戻るが、印を付けた先は残っている。",
+      "note": "巻き戻したあとも、付けた世界線から先の記録を辿れることを確かめてほしい。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "channel.state": "水路",
+    "cargo.state": "積荷"
+  },
+  "valueLabels": {
+    "closed": "閉鎖",
+    "open": "開通",
+    "held": "留め置き",
+    "shipped": "運び出し済み"
+  },
+  "order": 6,
+  "teaches": "branch"
+}

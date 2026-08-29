@@ -14,11 +14,16 @@ import {
 import { threeWayMerge } from './merge.ts';
 import {
   checkout,
+  cherryPick,
   commit,
+  createTag,
+  deleteTag,
   createBranch,
   createTimeline,
   merge,
+  previewCherryPick,
   previewMerge,
+  rebase,
   recoverableCommits,
   reset,
   revert,
@@ -307,5 +312,213 @@ describe('branch', () => {
   it('存在しないブランチへの checkout は失敗する', () => {
     const result = checkout(baseTimeline(), { type: 'branch', branch: 'ghost' });
     expectErr(result, 'BranchNotFound');
+  });
+});
+
+describe('cherryPick', () => {
+  it('別の世界線の出来事だけを持ち込める', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'lab.status': 'sealed' });
+    const altTip = state.branches.alt as string;
+
+    const picked = unwrap(cherryPick(state, { targetId: altTip }));
+
+    // 出来事の効果は反映される
+    assert.equal(unwrap(currentWorldState(picked))['lab.status'], 'sealed');
+    // こちらの世界線で起きたことは消えない
+    assert.equal(unwrap(currentWorldState(picked))['hero.alive'], 'false');
+  });
+
+  it('親を 1 つしか持たない —— merge と違い履歴は繋がらない', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'lab.status': 'sealed' });
+    const altTip = state.branches.alt as string;
+
+    const picked = unwrap(cherryPick(state, { targetId: altTip }));
+    const tip = picked.commits[picked.branches.main as string];
+
+    assert.equal(tip?.parents.length, 1, 'cherry-pick は親を 1 つだけ持つ');
+    assert.equal(
+      isAncestorOf(picked, altTip, picked.branches.main as string),
+      false,
+      '取り込み元は祖先にならない',
+    );
+  });
+
+  it('取り込んだ後も、元の世界線はそのまま残る', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'lab.status': 'sealed' });
+    const altTip = state.branches.alt as string;
+    const picked = unwrap(cherryPick(state, { targetId: altTip }));
+
+    assert.equal(picked.branches.alt, altTip, 'alt は動かない');
+  });
+
+  it('同じ事実を書き換えていれば矛盾になる', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'hero.alive': 'ascended' });
+    const altTip = state.branches.alt as string;
+
+    const analysis = unwrap(previewCherryPick(state, altTip));
+    assert.deepEqual(analysis.conflicts.map((c) => c.key), ['hero.alive']);
+
+    expectErr(cherryPick(state, { targetId: altTip }), 'MergeConflict');
+
+    const resolved = unwrap(
+      cherryPick(state, {
+        targetId: altTip,
+        resolutions: { 'hero.alive': { type: 'theirs' } },
+      }),
+    );
+    assert.equal(unwrap(currentWorldState(resolved))['hero.alive'], 'ascended');
+  });
+
+  it('すでに含まれている出来事は持ち込めない', () => {
+    let state = baseTimeline();
+    state = unwrap(commit(state, { message: 'x', changes: { a: '1' } }));
+    expectErr(cherryPick(state, { targetId: 'c2' }), 'AlreadyApplied');
+  });
+
+  it('世界が変わらないなら積まない', () => {
+    // 双方が同じ結論に達している場合、持ち込んでも何も起きない
+    const state = divergent({ k: 'same' }, { k: 'same' });
+    const altTip = state.branches.alt as string;
+    expectErr(cherryPick(state, { targetId: altTip }), 'NothingToCommit');
+  });
+});
+
+describe('tag', () => {
+  it('時点に名前を付けられる', () => {
+    const state = unwrap(createTag(baseTimeline(), 'baseline'));
+    assert.equal(state.tags.baseline, 'c1');
+  });
+
+  it('ブランチと違って動かない —— これが tag の本質', () => {
+    let state = unwrap(createTag(baseTimeline(), 'baseline'));
+    state = unwrap(commit(state, { message: '次の出来事', changes: { k: 'v' } }));
+
+    assert.equal(state.branches.main, 'c2', 'ブランチは先へ進む');
+    assert.equal(state.tags.baseline, 'c1', 'タグはその時点に留まる');
+  });
+
+  it('同じ名前は二度付けられない', () => {
+    const state = unwrap(createTag(baseTimeline(), 'baseline'));
+    expectErr(createTag(state, 'baseline'), 'TagAlreadyExists');
+  });
+
+  it('時点を指定して付けられる', () => {
+    let state = unwrap(commit(baseTimeline(), { message: 'x', changes: { k: 'v' } }));
+    state = unwrap(createTag(state, 'origin', 'c1'));
+    assert.equal(state.tags.origin, 'c1');
+  });
+
+  it('外せる', () => {
+    let state = unwrap(createTag(baseTimeline(), 'baseline'));
+    state = unwrap(deleteTag(state, 'baseline'));
+    assert.equal('baseline' in state.tags, false);
+    expectErr(deleteTag(state, 'baseline'), 'TagNotFound');
+  });
+
+  it('印を付けても世界は変わらない', () => {
+    const before = baseTimeline();
+    const after = unwrap(createTag(before, 'baseline'));
+    assert.deepEqual(unwrap(currentWorldState(after)), unwrap(currentWorldState(before)));
+  });
+});
+
+describe('rebase', () => {
+  it('出来事が相手の世界線の上に並び直る', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'lab.status': 'sealed' });
+    const rebased = unwrap(rebase(state, { onto: 'alt' }));
+
+    // 両方の変更が乗った状態になる
+    assert.deepEqual(unwrap(currentWorldState(rebased)), {
+      'hero.alive': 'false',
+      'lab.status': 'sealed',
+    });
+  });
+
+  it('履歴が一列になる —— merge との決定的な違い', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'lab.status': 'sealed' });
+
+    const merged = unwrap(merge(state, { from: 'alt' }));
+    const mergeTip = merged.commits[merged.branches.main as string];
+    assert.equal(mergeTip?.parents.length, 2, 'merge は分岐を残したまま束ねる');
+
+    const rebased = unwrap(rebase(state, { onto: 'alt' }));
+    const rebaseTip = rebased.commits[rebased.branches.main as string];
+    assert.equal(rebaseTip?.parents.length, 1, 'rebase は一列に並べ直す');
+    assert.equal(
+      isAncestorOf(rebased, rebased.branches.alt as string, rebased.branches.main as string),
+      true,
+      '相手の世界線が自分の祖先になる',
+    );
+  });
+
+  it('元の時点は参照を失うが、消えはしない', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'lab.status': 'sealed' });
+    const original = state.branches.main as string;
+    const rebased = unwrap(rebase(state, { onto: 'alt' }));
+
+    assert.notEqual(rebased.branches.main, original, '先端は作り直された別物になる');
+    assert.ok(rebased.commits[original], '元の記録は残っている');
+    assert.ok(
+      orphanedCommits(rebased).includes(original),
+      '参照は外れる（reflog から辿れる）',
+    );
+  });
+
+  it('相手が自分の祖先ならやることがない', () => {
+    let state = baseTimeline();
+    state = unwrap(createBranch(state, 'alt'));
+    state = unwrap(commit(state, { message: 'ours', changes: { a: '1' } }));
+    expectErr(rebase(state, { onto: 'alt' }), 'AlreadyUpToDate');
+  });
+
+  it('同じ事実を書き換えていれば矛盾になる', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'hero.alive': 'ascended' });
+    expectErr(rebase(state, { onto: 'alt' }), 'MergeConflict');
+  });
+
+  it('ours と theirs が merge と逆になる —— 本物の git と同じ向き', () => {
+    const state = divergent({ 'hero.alive': 'false' }, { 'hero.alive': 'ascended' });
+
+    // rebase では ours が「載せ替える先」、theirs が「移動してくる側」
+    const ours = unwrap(
+      rebase(state, { onto: 'alt', resolutions: { 'hero.alive': { type: 'ours' } } }),
+    );
+    assert.equal(
+      unwrap(currentWorldState(ours))['hero.alive'],
+      'ascended',
+      'ours は載せ替え先（alt）の値',
+    );
+
+    const theirs = unwrap(
+      rebase(state, { onto: 'alt', resolutions: { 'hero.alive': { type: 'theirs' } } }),
+    );
+    assert.equal(
+      unwrap(currentWorldState(theirs))['hero.alive'],
+      'false',
+      'theirs は移動してくる側（main）の値',
+    );
+
+    // merge では向きが逆であることも押さえておく
+    const merged = unwrap(
+      merge(state, { from: 'alt', resolutions: { 'hero.alive': { type: 'ours' } } }),
+    );
+    assert.equal(
+      unwrap(currentWorldState(merged))['hero.alive'],
+      'false',
+      'merge の ours は自分（main）の値',
+    );
+  });
+
+  it('統合済みの時点を含む列は並べ直せない', () => {
+    let state = divergent({ a: '1' }, { b: '1' });
+    state = unwrap(merge(state, { from: 'alt' }));
+
+    // main とは別に分岐した世界線を用意する（祖先だと「やることがない」になる）
+    state = unwrap(createBranch(state, 'third', 'c1'));
+    state = unwrap(checkout(state, { type: 'branch', branch: 'third' }));
+    state = unwrap(commit(state, { message: 'third', changes: { c: '1' } }));
+    state = unwrap(checkout(state, { type: 'branch', branch: 'main' }));
+
+    expectErr(rebase(state, { onto: 'third' }), 'CannotRebaseMerge');
   });
 });

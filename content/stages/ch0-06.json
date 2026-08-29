@@ -1,0 +1,180 @@
+{
+  "id": "ch0-06",
+  "title": "消えたものを辿る",
+  "chapter": {
+    "number": 2,
+    "title": "訓練 II — よく使う手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "06"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "BRANCH — 失われた時点を辿り直す（REFLOG）"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-05"
+  },
+  "order": 4,
+  "intro": [
+    "REFLOG をお教えします。RESET で切り離された時点は、まだ辿り直せます。",
+    "ここはジュダルが二度 RESET を使った記録です。行き場を失った時点が四つ、宙に浮いたままになっています。",
+    "でも消えてはいません。観測局は、失われた参照の履歴を別に持っています。それが reflog です。",
+    "四つのうち、戻すべきなのは二つだけです。残りは撤去済みの仮設物なので、戻すと現場が混乱します。"
+  ],
+  "outro": [
+    "巻き戻したものは、しばらくの間は取り戻せます。永久に消えるわけではありません。",
+    "——ただ「しばらく」がいつまでかは、誰も保証していないんですよね。",
+    "それと、reflog に残っているものが全部正しいわけでもありません。拾う前に、何を拾うのかを見てください。",
+    "ジュダルはそれをしませんでした。だからこの記録が残っています。"
+  ],
+  "initialFacts": {
+    "beacon.state": "dark",
+    "log.state": "kept",
+    "temp.state": "none"
+  },
+  "rootMessage": "訓練記録 06: 観測開始",
+  "rootNarrative": "標識灯はまだ点いていない。仮設物も置かれていない。",
+  "setup": [
+    {
+      "kind": "commit",
+      "message": "標識灯が点る",
+      "changes": {
+        "beacon.state": "lit"
+      },
+      "narrative": "誰かが標識灯を点けた。以後、船はこの灯りを頼りに入港している。"
+    },
+    {
+      "kind": "commit",
+      "message": "灯りが基準として登録される",
+      "changes": {
+        "log.state": "registered"
+      },
+      "narrative": "標識灯の位置が、正式な基準点として記録に登録された。この二つは戻す価値がある。"
+    },
+    {
+      "kind": "reset",
+      "targetId": "c1"
+    },
+    {
+      "kind": "commit",
+      "message": "仮設標識が立てられる",
+      "changes": {
+        "temp.state": "placed"
+      },
+      "narrative": "工事期間中だけの仮設標識。標識灯の代わりに、三週間だけ使われた。"
+    },
+    {
+      "kind": "commit",
+      "message": "仮設標識が撤去される",
+      "changes": {
+        "temp.state": "removed"
+      },
+      "narrative": "工事の終了とともに撤去済み。この列は、もう誰にも必要とされていない。"
+    },
+    {
+      "kind": "reset",
+      "targetId": "c1"
+    }
+  ],
+  "goals": [
+    {
+      "id": "beacon-lit",
+      "label": "標識灯がまた点っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "beacon.state",
+        "value": "lit"
+      }
+    },
+    {
+      "id": "registered",
+      "label": "基準点の登録が戻っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "log.state",
+        "value": "registered"
+      }
+    },
+    {
+      "id": "no-junk",
+      "label": "撤去済みの仮設標識まで拾い直していない",
+      "predicate": {
+        "type": "not",
+        "of": {
+          "type": "historyPreserved",
+          "commitId": "c5"
+        }
+      }
+    },
+    {
+      "id": "history-preserved",
+      "label": "拾い直した記録を、消さずに残している",
+      "optional": true,
+      "predicate": {
+        "type": "historyPreserved",
+        "commitId": "c2"
+      }
+    }
+  ],
+  "abilities": [
+    "checkout",
+    "branch",
+    "merge",
+    "reset"
+  ],
+  "moveLimit": 3,
+  "causalLoadLimit": 5,
+  "hints": [
+    "薄く表示されている丸が、行き場を失った時点だ。クリックすると何が起きた記録かを読める。",
+    "コンソールで git reflog と打つと、失われた参照の履歴が見える。列が二本あることが分かる。",
+    "拾うべきは標識灯の列。仮設標識の列は放っておく。",
+    "標識灯の列の先端に BRANCH を付けてから、main へ MERGE する。RESET で先端まで戻る手もあるが、負荷が高い。"
+  ],
+  "guide": [
+    {
+      "text": "薄い丸が四つある。RESET が二度使われ、二本の列が宙に浮いている。",
+      "note": "消えてはいない。参照が外れているだけで、記録そのものは残っている。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "四つとも読んで、どちらの列を拾うのかを決める。片方は撤去済みの仮設物だ。",
+      "note": "reflog に残っている＝拾うべき、ではない。何を拾うかは自分で決める。",
+      "until": {
+        "type": "commitSelected"
+      }
+    },
+    {
+      "text": "拾う列の先端に BRANCH で名前を付け、こちらへ取り込む。手前の時点も一緒に辿れるようになる。",
+      "note": "世界線は先端を指すだけでよい。そこから親を辿れるので、途中の時点は自動的に生き返る。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "beacon.state": "標識灯",
+    "log.state": "基準点の登録",
+    "temp.state": "仮設標識"
+  },
+  "valueLabels": {
+    "dark": "消灯",
+    "lit": "点灯",
+    "kept": "未登録",
+    "registered": "登録済み",
+    "none": "なし",
+    "placed": "設置中",
+    "removed": "撤去済み"
+  }
+}

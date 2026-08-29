@@ -8,7 +8,7 @@ import { type Result, ok, err } from '../../domain/shared/result.ts';
 import type { DomainError } from '../../domain/shared/errors.ts';
 import { executeAbility } from '../../domain/ability/execute.ts';
 import { causalLoadOf, countsAsMove } from '../../domain/ability/types.ts';
-import type { AbilityCommand } from '../../domain/ability/types.ts';
+import type { AbilityCommand, AbilityKind } from '../../domain/ability/types.ts';
 import { evaluateGoals } from '../../domain/stage/goal.ts';
 import type { GoalReport } from '../../domain/stage/goal.ts';
 import { buildInitialTimeline } from '../../domain/stage/spec.ts';
@@ -19,6 +19,13 @@ export type SessionStatus = 'playing' | 'cleared';
 
 export interface StageSession {
   readonly spec: StageSpec;
+  /**
+   * このプレイで実際に行使できる能力。
+   *
+   * ステージが指定するものに加え、これまでの訓練で習得したものを含む。
+   * 一度渡された術式が後の記録で使えなくなるのは不自然なので、積み上げていく。
+   */
+  readonly abilities: readonly AbilityKind[];
   readonly timeline: TimelineState;
   readonly movesUsed: number;
   readonly causalLoad: number;
@@ -35,13 +42,19 @@ const snapshotWithout = (session: StageSession): StageSession => ({
   past: [],
 });
 
-export const startStage = (spec: StageSpec): Result<StageSession, DomainError> => {
+export const startStage = (
+  spec: StageSpec,
+  /** これまでに習得している能力。ステージ指定分と合わせて使えるようになる。 */
+  learned: readonly AbilityKind[] = [],
+): Result<StageSession, DomainError> => {
   const timeline = buildInitialTimeline(spec);
   if (!timeline.ok) return timeline;
 
+  const abilities = [...new Set<AbilityKind>([...spec.abilities, ...learned])];
   const report = evaluateGoals(timeline.value, spec.goals);
   return ok({
     spec,
+    abilities,
     timeline: timeline.value,
     movesUsed: 0,
     causalLoad: 0,
@@ -68,12 +81,13 @@ export const playAbility = (
     return err({ type: 'CausalLoadExceeded', limit: spec.causalLoadLimit });
   }
 
-  const timeline = executeAbility(session.timeline, command, spec.abilities);
+  const timeline = executeAbility(session.timeline, command, session.abilities);
   if (!timeline.ok) return timeline;
 
   const report = evaluateGoals(timeline.value, spec.goals);
   return ok({
     spec,
+    abilities: session.abilities,
     timeline: timeline.value,
     movesUsed: nextMoves,
     causalLoad: nextLoad,
@@ -99,8 +113,9 @@ export const undo = (session: StageSession): StageSession => {
 export const replay = (
   spec: StageSpec,
   commands: readonly AbilityCommand[],
+  learned: readonly AbilityKind[] = [],
 ): Result<StageSession, DomainError> => {
-  let session = startStage(spec);
+  let session = startStage(spec, learned);
   if (!session.ok) return session;
 
   for (const command of commands) {

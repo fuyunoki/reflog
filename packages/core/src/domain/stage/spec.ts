@@ -7,23 +7,60 @@ import type { DomainError } from '../shared/errors.ts';
 import { createTimeline } from '../timeline/operations.ts';
 import { executeAbility } from '../ability/execute.ts';
 import type { AbilityCommand, AbilityKind } from '../ability/types.ts';
+import type { ChangeSet } from '../timeline/types.ts';
 import type { FactKey, TimelineState, WorldState } from '../timeline/types.ts';
 import type { DifficultyLevel } from './difficulty.ts';
+import type { WorldCondition } from '../campaign/types.ts';
 import type { Goal } from './goal.ts';
 import type { GuideStep } from './guide.ts';
 
 export type StageId = string;
 
+/**
+ * このステージで刻める出来事。
+ *
+ * git の commit は「何を変えるか」を作業者が決めるが、
+ * ゲームでは世界に対して何が起こせるかをステージ側が用意する。
+ * プレイヤーは、その中から何を起こすかを選ぶ。
+ */
+export interface CommitOffer {
+  readonly id: string;
+  /** 記録に残る一文。git のコミットメッセージにあたる。 */
+  readonly message: string;
+  readonly changes: ChangeSet;
+  readonly narrative?: string;
+}
+
 /** 章。プレイヤーに解放する能力の単位でもある。 */
 export interface ChapterRef {
   readonly number: number;
   readonly title: string;
+  /**
+   * 訓練か本編か。
+   * 訓練は「どの術式を、どの順で渡すか」で段階が分かれる。
+   * 省略時は number が 0 のものを訓練とみなす。
+   */
+  readonly kind?: 'training' | 'story';
+}
+
+/**
+ * ステージ冒頭の見出し。
+ *
+ * 「いつ・どこの話か」が本文を読まないと分からない、という指摘への対応。
+ * 項目を固定せず行の並びにしてあるのは、本編（年月・場所・分類・関係者）と
+ * 訓練（演習番号・分類・主題）で必要な欄が違うため。
+ */
+export interface BriefingLine {
+  readonly label: string;
+  readonly value: string;
 }
 
 export interface StageSpec {
   readonly id: StageId;
   readonly title: string;
   readonly chapter: ChapterRef;
+  /** 冒頭に出す見出し。本文より先に目に入る位置に置く。 */
+  readonly briefing?: readonly BriefingLine[];
   /** ステージ開始時に読ませる導入テキスト。 */
   readonly intro: readonly string[];
   /** クリア時に読ませるテキスト。 */
@@ -48,6 +85,9 @@ export interface StageSpec {
   readonly causalLoadLimit?: number;
   /** 詰まったときに段階的に開示するヒント。 */
   readonly hints?: readonly string[];
+
+  /** COMMIT で刻める出来事の候補。無ければ commit は使えない。 */
+  readonly offers?: readonly CommitOffer[];
   /**
    * 手引き。条件を満たすごとに次の段へ進み、常に「次にすること」が画面に出る。
    * 初めて触る章ほど厚くし、慣れた章では省いてよい。
@@ -63,6 +103,26 @@ export interface StageSpec {
   readonly valueLabels?: Readonly<Record<string, string>>;
   /** 自動生成ステージの警戒度。手作りステージでは省略してよい。 */
   readonly difficulty?: DifficultyLevel;
+
+  /**
+   * 章の中での並び順。小さいほど先。
+   * ID の採番と学習の順序は必ずしも一致しないので、順序は明示する。
+   */
+  readonly order?: number;
+
+  /**
+   * このステージで新しく渡す術式。1 ステージにつき 1 つ。
+   * 一覧で「何を覚える回か」を示すのに使う。
+   */
+  readonly teaches?: AbilityKind;
+
+  /**
+   * このステージが選べるようになる条件。省略時は最初から開いている。
+   *
+   * 順に解放していくことで、新しい能力を覚える順序が保証される。
+   * 条件はプレイヤーの記録（クリア状況と過去の決断）から評価する。
+   */
+  readonly unlockedBy?: WorldCondition;
 }
 
 /**

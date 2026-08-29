@@ -1,0 +1,188 @@
+{
+  "id": "ch0-09",
+  "title": "起こす",
+  "chapter": {
+    "number": 1,
+    "title": "訓練 I — 日常の手",
+    "kind": "training"
+  },
+  "briefing": [
+    {
+      "label": "演習",
+      "value": "09"
+    },
+    {
+      "label": "分類",
+      "value": "模擬記録（実在しない世界線）"
+    },
+    {
+      "label": "主題",
+      "value": "COMMIT — 世界に出来事を刻む"
+    }
+  ],
+  "unlockedBy": {
+    "type": "stageCleared",
+    "stageId": "ch0-01"
+  },
+  "intro": [
+    "次の術式は COMMIT —— 世界に新しい出来事を刻む力です。",
+    "前回は、すでに起きたことを打ち消しました。今回は逆ですね。何も起きていない世界に、あなたが出来事を起こします。",
+    "何を起こせるかは記録の側が用意しています。その中から、どれを・いくつ刻むかを決めるのがあなたの仕事です。",
+    "門の前に人が溜まっています。通すだけなら簡単ですが、手順を踏まないと、後で誰も責任を取れなくなりますよ。"
+  ],
+  "outro": [
+    "起こしたことは、他の出来事とまったく同じように記録に残ります。だから後から打ち消せます。",
+    "候補に並んでいるからといって、刻んでいいとは限りません。警報を鳴らさなかったのは、いい判断でした。",
+    "ここまでが、日々の観測でいちばん多く使う二つです。"
+  ],
+  "initialFacts": {
+    "guard.state": "unaware",
+    "gate.state": "closed",
+    "crowd.state": "waiting",
+    "alarm.state": "silent",
+    "log.state": "blank"
+  },
+  "rootMessage": "訓練記録 09: 観測開始",
+  "rootNarrative": "門は閉じたまま。人々はその前で待っている。警備はまだ何も知らない。",
+  "offers": [
+    {
+      "id": "notify-guard",
+      "message": "警備に通知する",
+      "changes": {
+        "guard.state": "notified"
+      },
+      "narrative": "門を開ける旨を警備詰所へ通達した。手順書では、これが最初に来ることになっている。"
+    },
+    {
+      "id": "open-gate",
+      "message": "門を開く",
+      "changes": {
+        "gate.state": "open",
+        "crowd.state": "passed"
+      },
+      "narrative": "門が開き、待っていた人々は通り抜けた。何事もなかった。"
+    },
+    {
+      "id": "sound-alarm",
+      "message": "警報を鳴らす",
+      "changes": {
+        "alarm.state": "ringing",
+        "crowd.state": "scattered"
+      },
+      "narrative": "警報が鳴り、人々は散り散りに逃げた。門は閉じたままだ。誰も通れていない。"
+    },
+    {
+      "id": "write-log",
+      "message": "通行を記録に残す",
+      "changes": {
+        "log.state": "recorded"
+      },
+      "narrative": "何人が、いつ通ったかを日誌に書き入れた。書かなければ、通ったこと自体が存在しなくなる。"
+    }
+  ],
+  "goals": [
+    {
+      "id": "guard-notified",
+      "label": "警備に通知が届いている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "guard.state",
+        "value": "notified"
+      }
+    },
+    {
+      "id": "gate-open",
+      "label": "門が開いている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "gate.state",
+        "value": "open"
+      }
+    },
+    {
+      "id": "crowd-passed",
+      "label": "人々が通り抜けている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "crowd.state",
+        "value": "passed"
+      }
+    },
+    {
+      "id": "log-recorded",
+      "label": "通行が日誌に残っている",
+      "predicate": {
+        "type": "factEquals",
+        "key": "log.state",
+        "value": "recorded"
+      }
+    },
+    {
+      "id": "alarm-silent",
+      "label": "警報は鳴っていない（鳴らす必要のない場面だ）",
+      "predicate": {
+        "type": "factEquals",
+        "key": "alarm.state",
+        "value": "silent"
+      }
+    }
+  ],
+  "abilities": [
+    "commit",
+    "revert"
+  ],
+  "moveLimit": 5,
+  "causalLoadLimit": 7,
+  "hints": [
+    "候補は四つあるが、達成条件は五つある。すでに満たされている条件がひとつ混じっている。",
+    "警報を鳴らすと人々は散ってしまう。刻んではいけない候補だ。",
+    "通知・開門・記録の三つを刻む。順序は問われないが、現場では通知が先だ。",
+    "刻み違えても REVERT で打ち消せる。ただし因果負荷は戻らない。"
+  ],
+  "guide": [
+    {
+      "text": "COMMIT で新しい出来事を刻む。候補が四つ用意されている。",
+      "note": "刻む前に、右の「達成すべき世界の状態」を先に読んでおく。何を起こすべきかはそこに書いてある。",
+      "until": {
+        "type": "acknowledged"
+      }
+    },
+    {
+      "text": "条件を満たすのに必要な出来事を、必要なだけ刻む。ひとつでは終わらない。",
+      "note": "候補に並んでいる＝刻んでよい、ではない。すでに満たされている条件を壊すものが混じっている。",
+      "until": {
+        "type": "abilityUsed",
+        "ability": "commit"
+      }
+    },
+    {
+      "text": "残りを刻んで条件をすべて埋める。",
+      "note": "刻み違えたら REVERT で打ち消せる。負荷は戻らないので、上限には気を付けること。",
+      "until": {
+        "type": "cleared"
+      }
+    }
+  ],
+  "factLabels": {
+    "guard.state": "警備",
+    "gate.state": "門",
+    "crowd.state": "人々",
+    "alarm.state": "警報",
+    "log.state": "通行日誌"
+  },
+  "valueLabels": {
+    "unaware": "未通知",
+    "notified": "通知済み",
+    "closed": "閉鎖",
+    "open": "開放",
+    "waiting": "待機",
+    "passed": "通過",
+    "scattered": "離散",
+    "silent": "静止",
+    "ringing": "鳴動",
+    "blank": "未記入",
+    "recorded": "記入済み"
+  },
+  "order": 2,
+  "teaches": "commit"
+}

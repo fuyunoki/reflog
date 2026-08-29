@@ -112,3 +112,24 @@ export const campaignProgress = (
   const done = all.filter((id) => history.clearedStages.has(id)).length;
   return done / all.length;
 };
+
+/** ステージが選べる状態か。条件を持たないステージは最初から開いている。 */
+export const isStageUnlocked = (
+  history: WorldHistory,
+  stage: { readonly unlockedBy?: WorldCondition },
+): boolean =>
+  stage.unlockedBy === undefined || evaluateCondition(history, stage.unlockedBy);
+
+/**
+ * 一覧に出すときの状態。
+ * 未解放のステージも「何をクリアすれば開くか」を伝えるために存在は見せる。
+ */
+export type StageAvailability = 'cleared' | 'open' | 'locked';
+
+export const availabilityOf = (
+  history: WorldHistory,
+  stage: { readonly id: StageId; readonly unlockedBy?: WorldCondition },
+): StageAvailability => {
+  if (history.clearedStages.has(stage.id)) return 'cleared';
+  return isStageUnlocked(history, stage) ? 'open' : 'locked';
+};
